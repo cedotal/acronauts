@@ -1,0 +1,11 @@
+{
+    "name": "Acronauts",
+    "version": "0.0.1",
+    "description": "A game about acronyms",
+    "dependencies": {
+        "socket.io": "latest",
+        "express": "latest",
+        "jade": "latest"
+    },
+    "author": "Andrew Cedotal"
+}
