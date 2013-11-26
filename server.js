@@ -125,13 +125,17 @@ Game.prototype.addPlayer = function(player){
 };
 
 Game.prototype.validateAnswer = function(answer, prompt){
-	answer = answer.toLowerCase().split(' ').filter(function(segment){ return segment !== '';});
-	prompt = prompt.toLowerCase();
-	if (answer.length !== prompt.length){ return false };
-	for (var i = 0; i < answer.length; i++){
-		if (answer[i][0] !== prompt[i]){ return false };
+	if (answer === undefined || prompt === undefined) {
+		return false;
+	} else {
+		answer = answer.toLowerCase().split(' ').filter(function(segment){ return segment !== '';});
+		prompt = prompt.toLowerCase();
+		if (answer.length !== prompt.length){ return false };
+		for (var i = 0; i < answer.length; i++){
+			if (answer[i][0] !== prompt[i]){ return false };
+		};
+		return true;
 	};
-	return true;
 };
 
 Game.prototype.submitAnswer = function(playerId, answerText){
