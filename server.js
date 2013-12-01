@@ -19,10 +19,11 @@ app.use(express.static(__dirname + '/public'));
 // set up game config
 
 var gameConfig = {
-	promptLength: 1,
-	clockLength: 10,
-	gameStartDelay: 10,
-	maximumPlayers: 3
+	promptLength: 5,
+	clockLength: 5,
+	gameStartDelay: 5,
+	maximumPlayers: 2,
+	minimumPlayers: 2
 };
 
 var gameIdCounter = 0;
@@ -61,7 +62,7 @@ Lobby.prototype.addGame = function(game){
 
 Lobby.prototype.purgeEndedGames = function(){
 	this.currentGames = this.currentGames.filter(function(currentGame){
-		if (currentGame.state === 4){
+		if (currentGame.phase === 4){
 			return false
 		} else {
 			return true;
@@ -74,7 +75,7 @@ Lobby.prototype.addPlayerToOpenGame = function(player){
 	var playerAssigned = false;
 	for (var i = 0; i < self.currentGames.length ; i++){
 		var currentGame = self.currentGames[i];
-		if (currentGame.state === 0 && currentGame.players.length < gameConfig.maximumPlayers){
+		if (currentGame.phase === 0 && currentGame.players.length < gameConfig.maximumPlayers){
 			currentGame.addPlayer(player);
 			playerAssigned = true;
 			return self.currentGames[i];
@@ -93,35 +94,43 @@ function Game(){
 	this.id = gameIdCounter;
 	gameIdCounter++;
 	this.players = [];
-	this.state = 0;
+	this.phase = 0;
 	this.promptLength = gameConfig.promptLength;
+	this.minimumPlayers = gameConfig.minimumPlayers;
+	this.emissionTimerIds = [];
 };
 
 Game.prototype.begin = function(){
-	this.prompt = generatePrompt(gameConfig.promptLength);
-	this.clockStart = Date.now() + gameConfig.gameStartDelay * 1000;
-	this.clockEnd = Date.now() + (gameConfig.gameStartDelay + gameConfig.clockLength) * 1000;
-	this.state = 1;
+	var self = this;
+	if (this.phase === 0){
+		this.prompt = generatePrompt(gameConfig.promptLength);
+		this.clockStart = Date.now() + gameConfig.gameStartDelay * 1000;
+		this.clockEnd = Date.now() + (gameConfig.gameStartDelay + gameConfig.clockLength) * 1000;
+		this.phase = 1;
+		var answeringEndTimestamp = self.clockEnd - Date.now();
+		setTimeout(function(){
+			self.endAnswering();
+		}, answeringEndTimestamp);
+	};
 };
 
 Game.prototype.endAnswering = function(){
-	this.state = 2;
+	if (this.phase === 1){
+		this.phase = 2;
+	};
 };
 
 Game.prototype.endVoting = function(){
-	this.state = 3;
-	var winningPlayerId = this.getWinningPlayerId();
-	this.players.forEach(function(player){
-		if (player.id === winningPlayerId) {
-			player.winner = true;
-		} else {
-			player.winner = false;
-		};
-	});
+	if (this.phase === 2){
+		this.phase = 3;
+		this.judgeGame();
+	};
 };
 
 Game.prototype.addPlayer = function(player){
-	this.players.push(player);
+	if (this.phase === 0){
+		this.players.push(player);
+	};
 };
 
 Game.prototype.validateAnswer = function(answer, prompt){
@@ -141,9 +150,10 @@ Game.prototype.validateAnswer = function(answer, prompt){
 Game.prototype.submitAnswer = function(playerId, answerText){
 	// submission only goes through if:
 	// 1. it matches the prompt
-	// 2. the game is in the proper state
+	// 2. the game is in the proper phase
 	// else fail silently
-	if (this.validateAnswer(answerText, this.prompt) && this.state === 1){
+	// note that, as long as it's still phase 1, the server implementation allows players to change their answers!
+	if (this.validateAnswer(answerText, this.prompt) && this.phase === 1){
 		var player = this.getPlayerById(playerId);
 		player.setAnswer(answerText);
 	};
@@ -151,35 +161,13 @@ Game.prototype.submitAnswer = function(playerId, answerText){
 
 Game.prototype.submitVote = function(voterId, voteeId){
 	// submission only goes through if:
-	// 1. the game is in the proper state
+	// 1. the game is in the proper phase
 	// 2. a player is not voting for themselves 
 	// else fail silently
-	console.log('executing submitVote');
-	console.log('(voterId !== voteeId): %s', (voterId !== voteeId));
-	console.log('(this.state === 2): %s', (this.state === 2));
-	if (voterId !== voteeId && this.state === 2){
+	if (voterId !== voteeId && this.phase === 2){
 		var votee = this.getPlayerById(voteeId);
 		votee.addVote(voterId);
 	};
-};
-
-Game.prototype.isAnsweringComplete = function(){
-	var complete = true;
-	this.players.forEach(function(player){
-		if (player.answer.text === undefined){
-			complete = false;
-		};
-	});
-	return complete;
-};
-
-Game.prototype.isVotingComplete = function(){
-	var playerCount = this.players.length;
-	var votes = 0;
-	this.players.forEach(function(player){
-		votes += player.voters.length;
-	});
-	return votes >= playerCount;
 };
 
 Game.prototype.getPlayerById = function(id){
@@ -207,19 +195,23 @@ Game.prototype.getNumberOfPlayers = function(){
 	return this.players.length;
 };
 
-Game.prototype.getWinningPlayerId = function(){
+Game.prototype.judgeGame = function(){
 	this.players.sort(function(a, b){
-		if (a.voters.length > b.voters.length){
+		if (a.voters.length < b.voters.length){
 			return 1;
-		}
+		} else if (a.voters.length > b.voters.length) {
+			return -1;
 		// tiebreaker: who answered first?
-		else if (a.answer.timestamp < b.answer.timestamp) {
-			return 1;
-		} else {
+		} else if (a.answer.timestamp > b.answer.timestamp) {
+			return 1
+		} else if (a.answer.timestamp < b.answer.timestamp) {
 			return -1
+		} else {
+			return 0;
 		};
 	});
-	return this.players[this.players.length - 1].id;
+	// players may leave the room after the game is complete, but we still need their results around
+	this.results = this.players;
 };
 
 // set up Player class
@@ -260,34 +252,29 @@ io.sockets.on('connection', function(socket){
 	socket.join(room);
 
 	// ...and, if we have enough players, start the game...
-	if (game.getNumberOfPlayers() >= gameConfig.maximumPlayers){
+	if (game.getNumberOfPlayers() >= gameConfig.minimumPlayers){
 		game.begin();
 	};
 
-	// and broadcast the new game state
-	io.sockets.in(room).emit('gameState', game);
+	var emissionId = setInterval(function(){
+		console.log('***emitting game state at %s', new Date());
+		io.sockets.in(room).emit('gameState', game);
+	}, 1000);
+
+	game.emissionTimerIds.push(emissionId);
 
 	// whenever a player submits an answer, add it
 	socket.on('submitAnswer', function(data){
 		game.submitAnswer(socket.id, data.answerText);
-		if (game.isAnsweringComplete()){
-			game.endAnswering();
-			io.sockets.in(room).emit('gameState', game);
-		};
 	});
 
 	// whenever a player submits a vote, add it
 	socket.on('submitVote', function(data){
 		game.submitVote(socket.id, data.voteeId);
-		if (game.isVotingComplete()){
-			game.endVoting();
-			io.sockets.in(room).emit('gameState', game);
-		};
 	});
 
 	// whenever a player disconnects, remove them from the game and broadcast the new game state
 	socket.on('disconnect', function(){
 		game.removePlayerById(socket.id);
-		io.sockets.in(room).emit('gameState', game);
 	});
 });
