@@ -20,7 +20,7 @@ app.use(express.static(__dirname + '/public'));
 
 var gameConfig = {
 	promptLength: 5,
-	clockLength: 5,
+	clockLength: 30,
 	gameStartDelay: 5,
 	maximumPlayers: 2,
 	minimumPlayers: 2
@@ -48,12 +48,19 @@ function generatePrompt(length){
 
 // set up Lobby class
 
-function Lobby(){
+function Lobby(io){
 	var self = this;
+	// lobby needs the io object so it can pass it to the new games it creates
+	this.io = io;
+	this.io.sockets.on('connection', function(socket){
+		var player = new Player(socket);
+		// every time a connection is made, add that player to an open game
+		self.addPlayerToOpenGame(player);
+	});
 	this.currentGames = [];
 	setInterval(function(){
 		self.purgeEndedGames();
-	}, 20000);
+	});
 };
 
 Lobby.prototype.addGame = function(game){
@@ -82,7 +89,7 @@ Lobby.prototype.addPlayerToOpenGame = function(player){
 		};
 	};
 	// if we made it this far, the player was not assigned to any open games, so we have to create a new one
-	var newGame = new Game();
+	var newGame = new Game(this.io);
 	newGame.addPlayer(player);
 	this.addGame(newGame);
 	return this.currentGames[this.currentGames.length - 1];
@@ -90,15 +97,116 @@ Lobby.prototype.addPlayerToOpenGame = function(player){
 
 // set up Game class
 
-function Game(){
+function Game(io){
+	var self = this;
+	this.io = io;
 	this.id = gameIdCounter;
 	gameIdCounter++;
 	this.players = [];
 	this.phase = 0;
 	this.promptLength = gameConfig.promptLength;
 	this.minimumPlayers = gameConfig.minimumPlayers;
-	this.emissionTimerIds = [];
+	setInterval(function(){
+		self.tick();
+	}, 500);
 };
+
+Game.prototype.tick = function(){
+	console.log('ticking with this.phase: %s', this.phase);
+	var self = this;
+	switch(this.phase){
+		case 0:
+			if(this.checkIfGameCanBegin() === true){
+				this.begin();
+			};
+			break;
+		case 1:
+			if(this.checkIfAnsweringIsComplete() === true){
+				this.endAnswering();
+			};
+			break;
+		case 2:
+			if(this.checkIfVotingIsComplete() === true){
+				this.endVoting();
+			};
+			break;
+		case 3:
+			if(this.checkIfGameCanBeRemoved === true){
+				this.markGameForRemoval();
+			};
+			break;
+	};
+	io.sockets.in(this.id).emit('gameState', this.marshalPublicObject());
+};
+
+Game.prototype.marshalPublicObject = function(){
+	var self = this;
+	var publicObject = {};
+	var publicAttrs = [
+		'phase',
+		'promptLength',
+		'minimumPlayers',
+		'id',
+		'clockStart',
+		'clockEnd'
+	];
+	publicAttrs.forEach(function(attr){
+		publicObject[attr] = self[attr];
+	});
+	publicObject.players = this.players.map(function(player){
+		return player.marshalPublicObject();
+	});
+	return publicObject;
+};
+
+// functions that check whether the game phase can be advanced
+
+Game.prototype.checkIfGameCanBegin = function(){
+	if (this.players.length >= this.minimumPlayers) {
+		return true;
+	} else {
+		return false;
+	};
+};
+
+Game.prototype.checkIfAnsweringIsComplete = function(){
+	var totalAnswers = 0;
+	this.players.forEach(function(player){
+		if (player.answer.text !== undefined && player.answer.text !== ''){
+			totalAnswers += 1;
+		};
+	});
+	// answering is complete if either everyone has answered, or we're past the end of the clock
+	if (totalAnswers >= this.players.length || Date.now() >= this.clockEnd) {
+		return true;
+	} else {
+		return false;
+	};
+};
+
+Game.prototype.checkIfVotingIsComplete = function(){
+	var totalVotes = 0;
+	this.players.forEach(function(player){
+		totalVotes += player.voters.length;
+	});
+	if (totalVotes >= this.players.length) {
+		return true;
+	} else {
+		return false;
+	};
+};
+
+Game.prototype.checkIfGameCanBeRemoved = function(){
+	if (this.players.length === 0) {
+		return true;
+	} else {
+		return false;
+	};
+};
+
+
+// functions that advance the game phase. note that none of them contains validity checks; those
+// are called by game.tick() before deciding whether or not to call these
 
 Game.prototype.begin = function(){
 	var self = this;
@@ -127,8 +235,25 @@ Game.prototype.endVoting = function(){
 	};
 };
 
+Game.prototype.markGameForRemoval = function(){
+	if (this.phase === 3){
+		this.phase = 4;
+	};
+};
+
 Game.prototype.addPlayer = function(player){
+	var self = this;
 	if (this.phase === 0){
+		player.socket.join(this.id);
+		player.socket.on('submitAnswer', function(data){
+			self.submitAnswer(player.socket.id, data.answerText);
+		});
+		player.socket.on('submitVote', function(data){
+			self.submitVote(player.socket.id, data.voteeId);
+		});
+		player.socket.on('disconnect', function(){
+			self.removePlayerById(player.socket.id);
+		});
 		this.players.push(player);
 	};
 };
@@ -191,10 +316,6 @@ Game.prototype.removePlayerById = function(id){
 	});
 };
 
-Game.prototype.getNumberOfPlayers = function(){
-	return this.players.length;
-};
-
 Game.prototype.judgeGame = function(){
 	this.players.sort(function(a, b){
 		if (a.voters.length < b.voters.length){
@@ -211,13 +332,14 @@ Game.prototype.judgeGame = function(){
 		};
 	});
 	// players may leave the room after the game is complete, but we still need their results around
+	// TODO: needs to be a deep copy, not a pointer pass, otherwise it won't work
 	this.results = this.players;
 };
 
 // set up Player class
 
-function Player(id){
-	this.id = id;
+function Player(socket){
+	this.socket = socket;
 	this.voters = [];
 	this.answer = {};
 };
@@ -233,6 +355,20 @@ Player.prototype.setAnswer = function(answerText){
 	};
 };
 
+Player.prototype.marshalPublicObject = function(){
+	var self = this;
+	var publicObject = {};
+	var publicAttrs = [
+		'answer',
+		'voters'
+	];
+	publicAttrs.forEach(function(attr){
+		publicObject[attr] = self[attr];
+	});
+	publicObject.id = self.socket.id;
+	return publicObject;
+};
+
 
 // set up socket.io listener and events
 
@@ -240,41 +376,4 @@ var port = 3700;
 
 var io = require('socket.io').listen(app.listen(port));
 
-var lobby = new Lobby();
-
-io.sockets.on('connection', function(socket){
-	// every time a connection is made, add that player to the game...
-	var player = new Player(socket.id);
-	var game = lobby.addPlayerToOpenGame(player);
-
-	// ...assign that player's socket to a room for that game
-	var room = game.id;
-	socket.join(room);
-
-	// ...and, if we have enough players, start the game...
-	if (game.getNumberOfPlayers() >= gameConfig.minimumPlayers){
-		game.begin();
-	};
-
-	var emissionId = setInterval(function(){
-		console.log('***emitting game state at %s', new Date());
-		io.sockets.in(room).emit('gameState', game);
-	}, 1000);
-
-	game.emissionTimerIds.push(emissionId);
-
-	// whenever a player submits an answer, add it
-	socket.on('submitAnswer', function(data){
-		game.submitAnswer(socket.id, data.answerText);
-	});
-
-	// whenever a player submits a vote, add it
-	socket.on('submitVote', function(data){
-		game.submitVote(socket.id, data.voteeId);
-	});
-
-	// whenever a player disconnects, remove them from the game and broadcast the new game state
-	socket.on('disconnect', function(){
-		game.removePlayerById(socket.id);
-	});
-});
+var lobby = new Lobby(io);
