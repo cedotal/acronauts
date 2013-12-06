@@ -1,5 +1,5 @@
 
-var socket = io.connect('http://localhost:3700');
+var socket = io.connect('http://somehappenings.com:3700');
 
 // figure out if an answer is a legal match for a given prompt
 var validateAnswer = function(answer, prompt){
