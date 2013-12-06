@@ -159,7 +159,7 @@ views.promptView = function(el){
 				$(el).html(htmlOutput);
 				break;
 			default:
-				console('an invalid game state has been passed to promptView');
+				console.log('an invalid game state has been passed to promptView');
 		};
 	};
 };
@@ -221,28 +221,6 @@ ViewController.prototype.renderViews = function(gameState){
 	});
 };
 
-function AlertController(){};
-
-AlertController.prototype.handleAlerts = function(gameState){
-	var failedToAnswerFlag = false;
-	switch(gameState.phase){
-		case 2:
-			var matchedPlayer = gameState.players.filter(function(player){
-				if (player.id === socket.socket.sessionid) {
-					return true;
-				} else {
-					return false;
-				};
-			})[0];
-			if (matchedPlayer.answer.text === undefined && failedToAnswerFlag === false){
-				alert('Even though you didn\'t submit an answer in time, you can still vote for your favorite.');
-				var failedToAnswerFlag = true;
-			};
-			break;
-	};
-};
-
-
 function MasterController(el){
 	var self = this;
 	this.previousGameStateFromServer = { phase: undefined };
@@ -284,11 +262,9 @@ function MasterController(el){
 		};
 	};
 
-	this.alertController = new AlertController();
-
 	// whenever a new game state comes in, do the following
 	socket.on('gameState', function(gameState){
-		console.log('gameState recieved: %j', gameState);
+		console.log('gameState recieved through socket %s: %j', socket.socket.sessionid, gameState);
 		// 1. check the previous game phase. if it does not equal the new game phase being passed in,
 		// init a new one in its place
 		if (self.previousGameStateFromServer.phase !== gameState.phase){
@@ -297,9 +273,6 @@ function MasterController(el){
 
 		// 2. render all views in the current controller
 		self.viewController.renderViews(gameState);
-
-		// 3. throw any necessary alerts
-		self.alertController.handleAlerts(gameState);
 
 		// 3. set the new previous game state.
 		self.previousGameStateFromServer = gameState;

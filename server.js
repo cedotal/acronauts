@@ -4,7 +4,6 @@ var express = require("express");
 var app = express();
 
 // set up jade templating
-
 app.set('views', __dirname + '/templates');
 app.set('view engine', 'jade');
 app.engine('jade', require('jade').__express);
@@ -13,25 +12,18 @@ app.get('/', function(req, res){
 });
 
 // set up static file server
-
 app.use(express.static(__dirname + '/public'));
 
 // set up game config
-
 var gameConfig = {
 	promptLength: 5,
-	clockLength: 30,
+	clockLength: 45,
 	gameStartDelay: 5,
 	maximumPlayers: 2,
 	minimumPlayers: 2
 };
 
-var gameIdCounter = 0;
-
-var currentGames = [];
-
 // set up utility functions
-
 function randomLetter(){
     var text = "";
     var possible = "abcdefghijklmnopqrstuvwxyz";
@@ -47,19 +39,18 @@ function generatePrompt(length){
 };
 
 // set up Lobby class
-
 function Lobby(io){
 	var self = this;
-	// lobby needs the io object so it can pass it to the new games it creates
-	this.io = io;
-	this.io.sockets.on('connection', function(socket){
-		var player = new Player(socket);
-		// every time a connection is made, add that player to an open game
-		self.addPlayerToOpenGame(player);
-	});
+	// hacky, but it works!
+	this.gameIdCounter = 0;
 	this.currentGames = [];
-	setInterval(function(){
-		self.purgeEndedGames();
+	// lobby needs the io object so it can pass it to the new games it creates; io is handled at the game object level
+	this.io = io;
+	// every time a connection is made, add that player to an open game
+	this.io.sockets.on('connection', function(socket){
+		// console.log('connection event detected!');
+		var player = new Player(socket);
+		self.addPlayerToOpenGame(player);
 	});
 };
 
@@ -67,6 +58,7 @@ Lobby.prototype.addGame = function(game){
 	this.currentGames.push(game);
 };
 
+// TODO: currently unused
 Lobby.prototype.purgeEndedGames = function(){
 	this.currentGames = this.currentGames.filter(function(currentGame){
 		if (currentGame.phase === 4){
@@ -85,23 +77,24 @@ Lobby.prototype.addPlayerToOpenGame = function(player){
 		if (currentGame.phase === 0 && currentGame.players.length < gameConfig.maximumPlayers){
 			currentGame.addPlayer(player);
 			playerAssigned = true;
+			console.log('adding player to previously-existing game with id %s', currentGame.id);
 			return self.currentGames[i];
 		};
 	};
 	// if we made it this far, the player was not assigned to any open games, so we have to create a new one
-	var newGame = new Game(this.io);
+	var newGame = new Game(this.io, this.gameIdCounter);
+	this.gameIdCounter++;
 	newGame.addPlayer(player);
 	this.addGame(newGame);
+	console.log('adding player to new game with id %s', newGame.id);
 	return this.currentGames[this.currentGames.length - 1];
 };
 
 // set up Game class
-
-function Game(io){
+function Game(io, gameId){
 	var self = this;
 	this.io = io;
-	this.id = gameIdCounter;
-	gameIdCounter++;
+	this.id = gameId;
 	this.players = [];
 	this.phase = 0;
 	this.promptLength = gameConfig.promptLength;
@@ -112,7 +105,6 @@ function Game(io){
 };
 
 Game.prototype.tick = function(){
-	console.log('ticking with this.phase: %s', this.phase);
 	var self = this;
 	switch(this.phase){
 		case 0:
@@ -136,9 +128,19 @@ Game.prototype.tick = function(){
 			};
 			break;
 	};
-	io.sockets.in(this.id).emit('gameState', this.marshalPublicObject());
+	//console.log('connected clients that io currently knows about:');
+	//console.log(this.io.sockets.clients().map(function(client){return client.id}));
+	//console.log('io.sockets.manager.rooms');
+	//console.log(io.sockets.manager.rooms);
+	//console.log('emitting to the following room');
+	this.players.forEach(function(player){
+		player.socket.emit('gameState', self.marshalPublicObject());
+	});
 };
 
+// create a public version of the game object to send out to the clients. socket.io will automatically
+// strip all attrs that contain functions, but some attrs are not supposed to be public and some will,
+// when serialized, generate circular reference errors
 Game.prototype.marshalPublicObject = function(){
 	var self = this;
 	var publicObject = {};
@@ -148,7 +150,9 @@ Game.prototype.marshalPublicObject = function(){
 		'minimumPlayers',
 		'id',
 		'clockStart',
-		'clockEnd'
+		'clockEnd',
+		'prompt',
+		'results'
 	];
 	publicAttrs.forEach(function(attr){
 		publicObject[attr] = self[attr];
@@ -159,14 +163,10 @@ Game.prototype.marshalPublicObject = function(){
 	return publicObject;
 };
 
-// functions that check whether the game phase can be advanced
-
+// functions that check whether the game phase can be advanced to the next phase at any given point
 Game.prototype.checkIfGameCanBegin = function(){
-	if (this.players.length >= this.minimumPlayers) {
-		return true;
-	} else {
-		return false;
-	};
+	// console.log('checking if game can begin');
+	return this.players.length >= this.minimumPlayers;
 };
 
 Game.prototype.checkIfAnsweringIsComplete = function(){
@@ -177,11 +177,8 @@ Game.prototype.checkIfAnsweringIsComplete = function(){
 		};
 	});
 	// answering is complete if either everyone has answered, or we're past the end of the clock
-	if (totalAnswers >= this.players.length || Date.now() >= this.clockEnd) {
-		return true;
-	} else {
-		return false;
-	};
+	// console.log('checking answering is complete');
+	return totalAnswers >= this.players.length || Date.now() >= this.clockEnd;
 };
 
 Game.prototype.checkIfVotingIsComplete = function(){
@@ -189,25 +186,18 @@ Game.prototype.checkIfVotingIsComplete = function(){
 	this.players.forEach(function(player){
 		totalVotes += player.voters.length;
 	});
-	if (totalVotes >= this.players.length) {
-		return true;
-	} else {
-		return false;
-	};
+	// console.log('checking if voting is complete');
+	return totalVotes >= this.players.length;
 };
 
 Game.prototype.checkIfGameCanBeRemoved = function(){
-	if (this.players.length === 0) {
-		return true;
-	} else {
-		return false;
-	};
+	// console.log('checking if game can be removed');
+	return this.players.length === 0;
 };
 
 
 // functions that advance the game phase. note that none of them contains validity checks; those
 // are called by game.tick() before deciding whether or not to call these
-
 Game.prototype.begin = function(){
 	var self = this;
 	if (this.phase === 0){
@@ -242,9 +232,9 @@ Game.prototype.markGameForRemoval = function(){
 };
 
 Game.prototype.addPlayer = function(player){
+	console.log('adding player %s to game %s', player.socket.id, this.id);
 	var self = this;
 	if (this.phase === 0){
-		player.socket.join(this.id);
 		player.socket.on('submitAnswer', function(data){
 			self.submitAnswer(player.socket.id, data.answerText);
 		});
@@ -289,6 +279,7 @@ Game.prototype.submitVote = function(voterId, voteeId){
 	// 1. the game is in the proper phase
 	// 2. a player is not voting for themselves 
 	// else fail silently
+	// TODO: prevent multiple voting by checking for voteeId
 	if (voterId !== voteeId && this.phase === 2){
 		var votee = this.getPlayerById(voteeId);
 		votee.addVote(voterId);
@@ -297,7 +288,7 @@ Game.prototype.submitVote = function(voterId, voteeId){
 
 Game.prototype.getPlayerById = function(id){
 	var matchedPlayer = this.players.filter(function(player){
-		if (player.id === id) {
+		if (player.socket.id === id) {
 			return true;
 		} else {
 			return false;
@@ -307,13 +298,26 @@ Game.prototype.getPlayerById = function(id){
 };
 
 Game.prototype.removePlayerById = function(id){
+	var self = this;
+	// console.log('this.players before removal');
+	// console.log(this.players);
+	var indexOfPlayerToRemove;
+	for (var i = 0; i < this.players.length; i++){
+		if (self.players[i].socket.id === id) indexOfPlayerToRemove = i;
+	};
+	this.players.splice(indexOfPlayerToRemove, 1);
+	/*
 	this.players = this.players.filter(function(player){
-		if (player.id === id) {
+		if (player.socket.id === id) {
+			console.log('removing (in theory) player %s from game %s', self.id, id);
 			return false;
 		} else {
 			return true;
-		}
+		};
 	});
+*/
+	console.log('this.players after removal');
+	console.log(this.players);
 };
 
 Game.prototype.judgeGame = function(){
@@ -332,18 +336,19 @@ Game.prototype.judgeGame = function(){
 		};
 	});
 	// players may leave the room after the game is complete, but we still need their results around
-	// TODO: needs to be a deep copy, not a pointer pass, otherwise it won't work
-	this.results = this.players;
+	// this needs to be a deep copy, not a pointer pass, otherwise it won't work
+	this.results = this.players.map(function(player){ return player.marshalPublicObject() });
+	this.results = JSON.parse(JSON.stringify(this.results));
 };
 
 // set up Player class
-
 function Player(socket){
 	this.socket = socket;
 	this.voters = [];
 	this.answer = {};
 };
 
+// validity checking for addVote and setAnswer are performed at the game level, not the player level
 Player.prototype.addVote = function(votingPlayerId){
 	this.voters.push(votingPlayerId);
 };
@@ -355,6 +360,9 @@ Player.prototype.setAnswer = function(answerText){
 	};
 };
 
+// create a public version of a player object to send out to the clients. socket.io will automatically
+// strip all attrs that contain functions, but some attrs are not supposed to be public and some will,
+// when serialized, generate circular reference errors
 Player.prototype.marshalPublicObject = function(){
 	var self = this;
 	var publicObject = {};
@@ -371,9 +379,8 @@ Player.prototype.marshalPublicObject = function(){
 
 
 // set up socket.io listener and events
-
 var port = 3700;
 
-var io = require('socket.io').listen(app.listen(port));
+var io = require('socket.io').listen(app.listen(port), { log: false });
 
 var lobby = new Lobby(io);
