@@ -1,5 +1,5 @@
 
-var socket = io.connect('http://somehappenings:3700');
+var socket = io.connect('http://localhost:3700');
 // var socket = io.connect('http://somehappenings.com:3700');
 
 // figure out if an answer is a legal match for a given prompt
@@ -328,6 +328,18 @@ function MasterController(el){
 
 		// 3. set the new previous game state.
 		self.previousGameStateFromServer = gameState;
+	});
+	socket.on('connecting', function(data){
+		console.log('socket is attempting to connect with data:');
+		console.log(data);
+	});
+	socket.on('connect_failed', function(data){
+		console.log('socket connection failed with data:');
+		console.log(data);
+	});
+	socket.on('error', function(data){
+		console.log('general socket error with data:');
+		console.log(data);
 	});
 };
 

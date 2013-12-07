@@ -51,10 +51,7 @@ Lobby.prototype.addGame = function(game){
 	this.currentGames.push(game);
 };
 
-// TODO: currently unused
 Lobby.prototype.purgeEndedGames = function(){
-	console.log('purging games');
-	console.log('there are %s games before purge', this.currentGames.length);
 	this.currentGames = this.currentGames.filter(function(currentGame){
 		if (currentGame.phase === 4 && currentGame.players.length === 0){
 			return false
@@ -62,7 +59,6 @@ Lobby.prototype.purgeEndedGames = function(){
 			return true;
 		};
 	});
-	console.log('there are %s games after purge', this.currentGames.length);
 };
 
 Lobby.prototype.addPlayerToOpenGame = function(player){
@@ -302,8 +298,7 @@ Game.prototype.removePlayerById = function(id){
 		if (self.players[i].socket.id === id) indexOfPlayerToRemove = i;
 	};
 	this.players.splice(indexOfPlayerToRemove, 1);
-	// if this was the last player in the game, this game is now defunct. if game phase isn't
-	// already 4, it needs to be set to 4
+	// player departure requires a new check for whether the game is viable or not
 	if (this.checkIfGameCanBeRemoved()){
 		this.markGameForRemoval();
 	};
@@ -370,6 +365,6 @@ Player.prototype.marshalPublicObject = function(){
 // set up socket.io listener and events
 var port = 3700;
 
-var io = require('socket.io').listen(app.listen(port), { log: false });
+var io = require('socket.io').listen(app.listen(port), { log: true });
 
 var lobby = new Lobby(io);
