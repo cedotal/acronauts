@@ -7,7 +7,7 @@
 @media (min-width: 400px){
 	#wrapper {
 		border-width: 85px 15px;
-		border-color: #00000;
+		border-color: #000000;
 		border-style: solid;
 		border-radius: 12px;
 	}
@@ -18,11 +18,25 @@
 	height: 30px;
 }
 
+.minorWarning {
+	background-color: yellow;
+}
+
+.majorWarning {
+	color: white;
+	background-color: red;
+}
+
 #promptView, #inputView {
 	height: 50px;
 	width: 320px;
 	margin: 60px 0px;
 	text-align: center;
+}
+
+#inputView [type="text"]{
+	width: 280px;
+	margin-bottom: 30px;
 }
 
 #promptView {

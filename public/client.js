@@ -1,12 +1,16 @@
 
-var socket = io.connect('http://somehappenings.com:3700');
+var socket = io.connect('http://localhost:3700');
+// var socket = io.connect('http://somehappenings.com:3700');
 
 // figure out if an answer is a legal match for a given prompt
 var validateAnswer = function(answer, prompt){
 	if (answer === undefined || prompt === undefined) {
 		return false;
 	} else {
-		answer = answer.toLowerCase().split(' ').filter(function(segment){ return segment !== '';});
+		var stringsToIgnore = ['', 'the', 'a', 'an'];
+		answer = answer.toLowerCase().split(' ').filter(function(segment){
+			return stringsToIgnore.indexOf(segment) === -1;
+		});
 		prompt = prompt.toLowerCase();
 		if (answer.length !== prompt.length){ return false };
 		for (var i = 0; i < answer.length; i++){
@@ -38,6 +42,7 @@ var views = {};
 
 views.statusView = function(el){
 	this.render = function(gameState){
+		var classToAdd;
 		switch (gameState.phase){
 			case 0:
 				htmlOutput = 'Waiting for players to join...';
@@ -46,10 +51,15 @@ views.statusView = function(el){
 				var clockState = clockStateFromGameState(gameState);
 				if (clockState === 0){
 					var currentWait = Math.ceil((gameState.clockStart - Date.now())/1000);
-					htmlOutput = currentWait + ' sec until start'
+					htmlOutput = currentWait + ' sec until start';
 				} else if (clockState === 1) {
 					var secondsLeft = Math.ceil((gameState.clockEnd - Date.now())/1000);
-					htmlOutput = secondsLeft + ' secs left'
+					htmlOutput = secondsLeft + ' secs left';
+					if (secondsLeft <= 15 && secondsLeft > 5){
+						classToAdd = 'minorWarning';
+					} else if (secondsLeft <= 5) {
+						classToAdd = 'majorWarning';
+					};
 				} else if (clockState === 2) {
 					htmlOutput = 'Time\'s up!';
 				} else {
@@ -61,6 +71,7 @@ views.statusView = function(el){
 				htmlOutput = 'An invalid game phase has been reached.';
 		};
 		$(el).html(htmlOutput);
+		if (classToAdd !== undefined) $(el).addClass(classToAdd); 
 	};
 };
 
@@ -154,7 +165,7 @@ views.promptView = function(el){
 						htmlOutput += '_';
 					};
 				} else {
-					htmlOutput = gameState.prompt;
+					htmlOutput = gameState.prompt.toUpperCase();
 				};
 				$(el).html(htmlOutput);
 				break;
@@ -168,7 +179,7 @@ views.votingView = function(el){
 	var self = this;
 	this.render = function(gameState){
 		gameState.players.forEach(function(player){
-			if (player.id !== socket.socket.sessionid) {
+			if (player.id !== socket.socket.sessionid && player.answer.text !== undefined) {
 				$(el).append('<div>' + player.answer.text + '<button id="' + player.id + '">Vote</button></div>');
 				$('#' + player.id).click(function(){
 					socket.emit('submitVote', {
@@ -191,6 +202,13 @@ views.resultsView = function(el){
 		gameState.results.forEach(function(player){
 			content += ('<div>' + player.id + ': "' + player.answer.text + '" - ' + player.voters.length + '</div>');
 		});
+		$(el).html(content);
+	};
+};
+
+views.gameClosedView = function(el){
+	this.render = function(gameState){
+		var content = 'This game is closed. Would you like to start a new one?';
 		$(el).html(content);
 	};
 };
@@ -259,6 +277,11 @@ function MasterController(el){
 					'resultsView'
 				]);
 				break;
+			case 4:
+				self.viewController = new ViewController(el,  [
+					'gameClosedView'
+				]);
+				break;
 		};
 	};
 
@@ -266,7 +289,7 @@ function MasterController(el){
 	socket.on('gameState', function(gameState){
 		console.log('gameState recieved through socket %s: %j', socket.socket.sessionid, gameState);
 		// 1. check the previous game phase. if it does not equal the new game phase being passed in,
-		// init a new one in its place
+		// init a new controller in place of the old one
 		if (self.previousGameStateFromServer.phase !== gameState.phase){
 			self.initNewViewController(gameState);
 		};

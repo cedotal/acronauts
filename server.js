@@ -1,6 +1,6 @@
 // set up express
 
-var express = require("express");
+var express = require('express');
 var app = express();
 
 // set up jade templating
@@ -16,27 +16,17 @@ app.use(express.static(__dirname + '/public'));
 
 // set up game config
 var gameConfig = {
-	promptLength: 5,
-	clockLength: 45,
-	gameStartDelay: 5,
-	maximumPlayers: 2,
-	minimumPlayers: 2
+	promptLength: 5, // the number of characters in an acronauts prompt
+	clockLength: 45, // the amount of time players have to answer the prompt
+	gameStartDelay: 5, // the minimum amount of time players should have
+	idealGameWait: 15, // the maximum amount of time that players will ideally wait for additional players to be added on top of minPlayers 
+	maxPlayers: 8, // the most players we should have in a game
+	minPlayers: 3 // the fewest players we should have in a game
 };
 
-// set up utility functions
-function randomLetter(){
-    var text = "";
-    var possible = "abcdefghijklmnopqrstuvwxyz";
-    return possible.charAt(Math.floor(Math.random() * possible.length));;
-};
-
-function generatePrompt(length){
-	var prompt = '';
-	for (var i = 0; i < length; i++){
-		prompt += randomLetter();
-	}
-	return prompt;
-};
+// get our utility function for generating the prompts
+var promptGenerator = require('./promptGenerator');
+var generatePrompt = promptGenerator.generatePrompt;
 
 // set up Lobby class
 function Lobby(io){
@@ -52,6 +42,9 @@ function Lobby(io){
 		var player = new Player(socket);
 		self.addPlayerToOpenGame(player);
 	});
+	setInterval(function(){
+		self.purgeEndedGames();
+	}, 5000);
 };
 
 Lobby.prototype.addGame = function(game){
@@ -60,13 +53,16 @@ Lobby.prototype.addGame = function(game){
 
 // TODO: currently unused
 Lobby.prototype.purgeEndedGames = function(){
+	console.log('purging games');
+	console.log('there are %s games before purge', this.currentGames.length);
 	this.currentGames = this.currentGames.filter(function(currentGame){
-		if (currentGame.phase === 4){
+		if (currentGame.phase === 4 && currentGame.players.length === 0){
 			return false
 		} else {
 			return true;
 		};
 	});
+	console.log('there are %s games after purge', this.currentGames.length);
 };
 
 Lobby.prototype.addPlayerToOpenGame = function(player){
@@ -74,7 +70,7 @@ Lobby.prototype.addPlayerToOpenGame = function(player){
 	var playerAssigned = false;
 	for (var i = 0; i < self.currentGames.length ; i++){
 		var currentGame = self.currentGames[i];
-		if (currentGame.phase === 0 && currentGame.players.length < gameConfig.maximumPlayers){
+		if (currentGame.phase === 0 && currentGame.players.length < gameConfig.maxPlayers){
 			currentGame.addPlayer(player);
 			playerAssigned = true;
 			console.log('adding player to previously-existing game with id %s', currentGame.id);
@@ -98,7 +94,9 @@ function Game(io, gameId){
 	this.players = [];
 	this.phase = 0;
 	this.promptLength = gameConfig.promptLength;
-	this.minimumPlayers = gameConfig.minimumPlayers;
+	this.minPlayers = gameConfig.minPlayers;
+	this.maxPlayers = gameConfig.maxPlayers;
+	this.idealStartTime = Date.now() + (gameConfig.idealGameWait * 1000);
 	setInterval(function(){
 		self.tick();
 	}, 500);
@@ -128,11 +126,6 @@ Game.prototype.tick = function(){
 			};
 			break;
 	};
-	//console.log('connected clients that io currently knows about:');
-	//console.log(this.io.sockets.clients().map(function(client){return client.id}));
-	//console.log('io.sockets.manager.rooms');
-	//console.log(io.sockets.manager.rooms);
-	//console.log('emitting to the following room');
 	this.players.forEach(function(player){
 		player.socket.emit('gameState', self.marshalPublicObject());
 	});
@@ -147,7 +140,7 @@ Game.prototype.marshalPublicObject = function(){
 	var publicAttrs = [
 		'phase',
 		'promptLength',
-		'minimumPlayers',
+		'minPlayers',
 		'id',
 		'clockStart',
 		'clockEnd',
@@ -165,8 +158,16 @@ Game.prototype.marshalPublicObject = function(){
 
 // functions that check whether the game phase can be advanced to the next phase at any given point
 Game.prototype.checkIfGameCanBegin = function(){
-	// console.log('checking if game can begin');
-	return this.players.length >= this.minimumPlayers;
+	// if we have the max number of players, we're good to go!
+	if (this.players.length >= this.maxPlayers){
+		return true;
+	} else if (this.players.length >= this.minPlayers && Date.now() >= this.idealStartTime) {
+		// if we have at least the minimum number of players and we're past the ideal start
+		// time, we can start the game
+		return true;
+	} else {
+		return false;
+	};
 };
 
 Game.prototype.checkIfAnsweringIsComplete = function(){
@@ -177,7 +178,6 @@ Game.prototype.checkIfAnsweringIsComplete = function(){
 		};
 	});
 	// answering is complete if either everyone has answered, or we're past the end of the clock
-	// console.log('checking answering is complete');
 	return totalAnswers >= this.players.length || Date.now() >= this.clockEnd;
 };
 
@@ -186,12 +186,10 @@ Game.prototype.checkIfVotingIsComplete = function(){
 	this.players.forEach(function(player){
 		totalVotes += player.voters.length;
 	});
-	// console.log('checking if voting is complete');
 	return totalVotes >= this.players.length;
 };
 
 Game.prototype.checkIfGameCanBeRemoved = function(){
-	// console.log('checking if game can be removed');
 	return this.players.length === 0;
 };
 
@@ -299,25 +297,16 @@ Game.prototype.getPlayerById = function(id){
 
 Game.prototype.removePlayerById = function(id){
 	var self = this;
-	// console.log('this.players before removal');
-	// console.log(this.players);
 	var indexOfPlayerToRemove;
 	for (var i = 0; i < this.players.length; i++){
 		if (self.players[i].socket.id === id) indexOfPlayerToRemove = i;
 	};
 	this.players.splice(indexOfPlayerToRemove, 1);
-	/*
-	this.players = this.players.filter(function(player){
-		if (player.socket.id === id) {
-			console.log('removing (in theory) player %s from game %s', self.id, id);
-			return false;
-		} else {
-			return true;
-		};
-	});
-*/
-	console.log('this.players after removal');
-	console.log(this.players);
+	// if this was the last player in the game, this game is now defunct. if game phase isn't
+	// already 4, it needs to be set to 4
+	if (this.checkIfGameCanBeRemoved()){
+		this.markGameForRemoval();
+	};
 };
 
 Game.prototype.judgeGame = function(){
