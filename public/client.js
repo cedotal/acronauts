@@ -40,7 +40,7 @@ var clockStateFromGameState = function(gameState){
 // container for holding all of our views, so the controllers don't have to access them through window object
 var views = {};
 
-views.statusView = function(el){
+views.StatusView = function(el){
 	this.render = function(gameState){
 		var classToAdd;
 		switch (gameState.phase){
@@ -75,7 +75,7 @@ views.statusView = function(el){
 	};
 };
 
-views.inputView = function(el){
+views.InputView = function(el){
 	var self = this;
 	this.render = function(gameState){
 		var gamePhase = gameState.phase;
@@ -117,7 +117,7 @@ views.inputView = function(el){
 	}
 };
 
-views.playerListView = function(el){
+views.PlayerListView = function(el){
 	this.render = function(gameState){
 		var gamePhase = gameState.phase;
 		var intervalSet = false;
@@ -145,7 +145,7 @@ views.playerListView = function(el){
 };
 
 
-views.promptView = function(el){
+views.PromptView = function(el){
 	var self = this;
 	this.render = function(gameState){
 		var gamePhase = gameState.phase;
@@ -175,7 +175,7 @@ views.promptView = function(el){
 	};
 };
 
-views.votingView = function(el){
+views.VotingView = function(el){
 	var self = this;
 	this.render = function(gameState){
 		gameState.players.forEach(function(player){
@@ -196,7 +196,7 @@ views.votingView = function(el){
 	};
 };
 
-views.resultsView = function(el){
+views.ResultsView = function(el){
 	this.render = function(gameState){
 		var content = '';
 		gameState.results.forEach(function(player){
@@ -206,25 +206,49 @@ views.resultsView = function(el){
 	};
 };
 
-views.gameClosedView = function(el){
+views.GameClosedView = function(el){
 	this.render = function(gameState){
-		var content = 'This game is closed. Would you like to start a new one?';
+		var content = 'This game is closed. Reload the page to start a new one.';
 		$(el).html(content);
+	};
+};
+
+views.DocumentTitleView = function(){
+	this.render = function(gameState){
+		var newDocumentTitle = '';
+		switch(gameState.phase){
+			case 0:
+				newDocumentTitle = 'Acronauts - Gathering players'
+				break;
+			case 1:
+				newDocumentTitle = 'Acronauts - Game on!'
+				break;
+			case 2:
+				newDocumentTitle = 'Acronauts - Voting'
+				break;
+			case 3:
+				newDocumentTitle = 'Acronauts - Game over'
+				break;
+			case 4:
+				newDocumentTitle = 'Acronauts - Game does not exist'
+				break;
+		};
+		document.title = newDocumentTitle;
 	};
 };
 
 function ViewController(controllerEl, viewConfig){
 	var self = this;
+	this.views = [];		
 	// clear el
-	$(controllerEl).empty();		
+	$(controllerEl).empty();
 	viewConfig.forEach(function(view){
+		// maintain consistency where view class prototypes are capitalized but instances aren't
+		var viewName = view[0].toLowerCase() + view.slice(1);
 		// put the skeleton el in the view
-		$(controllerEl).append($('<div/>', {id: view}));
-	});
-	// instantiate each view, now that the skeleton is there
-	this.views = [];
-	viewConfig.forEach(function(view){
-		var viewEl = '#' + view;
+		$(controllerEl).append($('<div/>', {id: viewName}));
+		// instantiate each view, now that the skeleton is there
+		var viewEl = '#' + viewName;
 		self.views.push(new views[view](viewEl));
 	});
 };
@@ -249,18 +273,20 @@ function MasterController(el){
 		switch(gameState.phase){
 			case 0:
 				self.viewController = new ViewController(el,  [
-					'statusView',
-					'promptView',
-					'inputView',
-					'playerListView'
+					'DocumentTitleView',
+					'StatusView',
+					'PromptView',
+					'InputView',
+					'PlayerListView'
 				]);
 				break;
 			case 1:
 				self.viewController = new ViewController(el,  [
-					'statusView',
-					'promptView',
-					'inputView',
-					'playerListView'
+					'DocumentTitleView',
+					'StatusView',
+					'PromptView',
+					'InputView',
+					'PlayerListView'
 				]);
 				// set the timer for 1. input reveal, 2. ticker update
 				var timerId = setInterval(function(){
@@ -269,17 +295,20 @@ function MasterController(el){
 				break;
 			case 2:
 				self.viewController = new ViewController(el, [
-					'votingView'
+					'DocumentTitleView',
+					'VotingView'
 					]);
 				break;
 			case 3:
 				self.viewController = new ViewController(el,  [
-					'resultsView'
+					'DocumentTitleView',
+					'ResultsView'
 				]);
 				break;
 			case 4:
 				self.viewController = new ViewController(el,  [
-					'gameClosedView'
+					'DocumentTitleView',
+					'GameClosedView'
 				]);
 				break;
 		};
