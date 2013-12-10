@@ -1,23 +1,32 @@
 
 var socket = io.connect('http://localhost:3700');
-// var socket = io.connect('http://somehappenings.com:3700');
+// 	var socket = io.connect('http://somehappenings.com:3700');
 
 // figure out if an answer is a legal match for a given prompt
-var validateAnswer = function(answer, prompt){
-	if (answer === undefined || prompt === undefined) {
-		return false;
-	} else {
-		var stringsToIgnore = ['', 'the', 'a', 'an'];
-		answer = answer.toLowerCase().split(' ').filter(function(segment){
-			return stringsToIgnore.indexOf(segment) === -1;
-		});
-		prompt = prompt.toLowerCase();
-		if (answer.length !== prompt.length){ return false };
-		for (var i = 0; i < answer.length; i++){
-			if (answer[i][0] !== prompt[i]){ return false };
+// TODO: figure out a way for this to be derived from the same code as the server-side version
+function validateAnswer(answer, prompt, ignoredCharacters, optionallyIgnoredWords){
+	var ignoredCharacters = ['\'', '\"'];
+	var potentiallyIgnoredWords = ['a', 'an', 'the'];
+	answer = answer.toLowerCase();
+	ignoredCharacters.forEach(function(character){
+		answer = answer.replace(character, '');
+	});
+	splitAnswer = answer.split(' ').filter(function(segment){
+		return segment !== ' ';
+	});
+	for (var p = 0; p < prompt.length; p++){
+		while(prompt[p] !== splitAnswer[p]){
+			if(optionallyIgnoredWords.indexOf(splitAnswer[p]) !== -1){
+				// this word is being treated as being ignored, so cut it out!
+				splitAnswer.splice(p, 1);
+			} else {
+				// failed test
+				return false;
+			};
 		};
-		return true;
 	};
+	// even after our looping, it's possible that there could be extra segments in splitAnswer
+	return prompt.length === splitAnswer.length;
 };
 
 // accepts a gameState and figures out whether it's currently:
@@ -267,9 +276,13 @@ function MasterController(el){
 	var self = this;
 	this.previousGameStateFromServer = { phase: undefined };
 
+	this.initInitialViewController = new ViewController(el, [
+
+	]);
+
 	// a function to be called when the game state changes and we have to start a completely new
 	// controller to handle a completely new set of views
-	this.initNewViewController = function(gameState){
+	this.initNewGameViewController = function(gameState){
 		switch(gameState.phase){
 			case 0:
 				self.viewController = new ViewController(el,  [
@@ -320,7 +333,7 @@ function MasterController(el){
 		// 1. check the previous game phase. if it does not equal the new game phase being passed in,
 		// init a new controller in place of the old one
 		if (self.previousGameStateFromServer.phase !== gameState.phase){
-			self.initNewViewController(gameState);
+			self.initNewGameViewController(gameState);
 		};
 
 		// 2. render all views in the current controller
@@ -328,18 +341,6 @@ function MasterController(el){
 
 		// 3. set the new previous game state.
 		self.previousGameStateFromServer = gameState;
-	});
-	socket.on('connecting', function(data){
-		console.log('socket is attempting to connect with data:');
-		console.log(data);
-	});
-	socket.on('connect_failed', function(data){
-		console.log('socket connection failed with data:');
-		console.log(data);
-	});
-	socket.on('error', function(data){
-		console.log('general socket error with data:');
-		console.log(data);
 	});
 };
 
