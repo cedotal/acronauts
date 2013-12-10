@@ -1,35 +1,4 @@
-// set up utility functions for generating the prompts
-
-// instead of just picking letters of the alphabet randomly, we weight letters according to the frequency
-// with which they begin words in english (sourced from https://en.wikipedia.org/wiki/Letter_frequency)
-var englishLanguageFirstLetterInAWordFrequencyMap = {
-	a: 11.602,
-	b: 4.702,
-	c: 3.511,
-	d: 2.670,
-	e: 2.007,
-	f: 3.779,
-	g: 1.950,
-	h: 7.232,
-	i: 6.286,
-	j: 0.597,
-	k: 0.590,
-	l: 2.705,
-	m: 4.374,
-	n: 2.365,
-	o: 6.264,
-	p: 2.545,
-	q: 0.173,
-	r: 1.653,
-	s: 7.755,
-	t: 16.671,
-	u: 1.487,
-	v: 0.649,
-	w: 6.753,
-	x: 0.037,
-	y: 1.620,
-	z: 0.034
-};
+// prompt generation
 
 var convertObjectIntoPairOfArrays = function(object){
 	var arrayPair = {
@@ -59,13 +28,16 @@ var constructRangeBoundariesArrayFromFrequenciesArrayPair = function(frequencies
 };
 
 // construct the paired character array/character range boundaries array here, so we do it once rather than every time a function is called
-var characterFrequenciesArrayPair = convertObjectIntoPairOfArrays(englishLanguageFirstLetterInAWordFrequencyMap);
+var letterFrequencies = require('./letterFrequencies.eng.js');
+var characterFrequenciesArrayPair = convertObjectIntoPairOfArrays(letterFrequencies);
 var characterRangeBoundariesArray = constructRangeBoundariesArrayFromFrequenciesArrayPair(characterFrequenciesArrayPair);
 var characterRangeBoundariesArrayPair = {
 	characters: characterFrequenciesArrayPair.attrs,
 	rangeBoundaries: characterRangeBoundariesArray
 };
 
+// TODO: make either randomCharacter or generatePrompt accept an arbitrary frequency map so we can test
+// and/or localize this
 function randomCharacter(){
 	var r = Math.random();
 
@@ -84,4 +56,33 @@ function generatePrompt(length){
 	return prompt;
 };
 
+function validateAnswer(answer, prompt, ignoredCharacters, optionallyIgnoredWords){
+	if (ignoredCharacters === undefined) ignoredCharacters = [];
+	if (optionallyIgnoredWords === undefined) optionallyIgnoredWords = [];
+	prompt = prompt.toLowerCase();
+	answer = answer.toLowerCase();
+	ignoredCharacters.forEach(function(character){
+		var regExp = new RegExp(character, 'g');
+		answer = answer.replace(regExp, '');
+
+	});
+	splitAnswer = answer.split(' ').filter(function(segment){
+		return segment !== '';
+	});
+	for (var p = 0; p < prompt.length; p++){
+		while(splitAnswer[p] !== undefined && prompt[p] !== splitAnswer[p][0]){
+			if(optionallyIgnoredWords.indexOf(splitAnswer[p]) !== -1){
+				// this word is being treated as being ignored, so cut it out!
+				splitAnswer.splice(p, 1);
+			} else {
+				// failed test
+				return false;
+			};
+		};
+	};
+	// even after our looping, it's possible that there could be extra segments in splitAnswer
+	return prompt.length === splitAnswer.length;
+};
+
 module.exports.generatePrompt = generatePrompt;
+module.exports.validateAnswer = validateAnswer;
