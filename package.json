@@ -3,9 +3,10 @@
     "version": "0.0.1",
     "description": "A game about acronyms",
     "dependencies": {
-        "socket.io": "latest",
-        "express": "latest",
-        "jade": "latest"
+        "socket.io": "0.9.16",
+        "express": "3.4.6",
+        "jade": "0.35.0",
+        "mocha": "1.15.1"
     },
     "author": "Andrew Cedotal"
 }
