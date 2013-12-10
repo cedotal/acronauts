@@ -17,16 +17,19 @@ app.use(express.static(__dirname + '/public'));
 // set up game config
 var gameConfig = {
 	promptLength: 5, // the number of characters in an acronauts prompt
-	clockLength: 45, // the amount of time players have to answer the prompt
+	clockLength: 60, // the amount of time players have to answer the prompt
 	gameStartDelay: 5, // the minimum amount of time players should have
 	idealGameWait: 15, // the maximum amount of time that players will ideally wait for additional players to be added on top of minPlayers 
 	maxPlayers: 8, // the most players we should have in a game
-	minPlayers: 3 // the fewest players we should have in a game
+	minPlayers: 3, // the fewest players we should have in a game
+	ignoredCharacters: ['\'', '\"'], // characters that will always be ignored if part of an answer
+	optionallyIgnoredWords: ['a', 'an', 'the'] // words that can be either counted or not counted as part of an answer
 };
 
 // get our utility function for generating the prompts
-var promptGenerator = require('./promptGenerator');
-var generatePrompt = promptGenerator.generatePrompt;
+var gameUtils = require('./gameUtils');
+var generatePrompt = gameUtils.generatePrompt;
+var validateAnswer = gameUtils.validateAnswer;
 
 // set up Lobby class
 function Lobby(io){
@@ -38,7 +41,6 @@ function Lobby(io){
 	this.io = io;
 	// every time a connection is made, add that player to an open game
 	this.io.sockets.on('connection', function(socket){
-		// console.log('connection event detected!');
 		var player = new Player(socket);
 		self.addPlayerToOpenGame(player);
 	});
@@ -92,6 +94,8 @@ function Game(io, gameId){
 	this.promptLength = gameConfig.promptLength;
 	this.minPlayers = gameConfig.minPlayers;
 	this.maxPlayers = gameConfig.maxPlayers;
+	this.ignoredCharacters = gameConfig.ignoredCharacters;
+	this.optionallyIgnoredWords = gameConfig.optionallyIgnoredWords;
 	this.idealStartTime = Date.now() + (gameConfig.idealGameWait * 1000);
 	setInterval(function(){
 		self.tick();
@@ -242,27 +246,13 @@ Game.prototype.addPlayer = function(player){
 	};
 };
 
-Game.prototype.validateAnswer = function(answer, prompt){
-	if (answer === undefined || prompt === undefined) {
-		return false;
-	} else {
-		answer = answer.toLowerCase().split(' ').filter(function(segment){ return segment !== '';});
-		prompt = prompt.toLowerCase();
-		if (answer.length !== prompt.length){ return false };
-		for (var i = 0; i < answer.length; i++){
-			if (answer[i][0] !== prompt[i]){ return false };
-		};
-		return true;
-	};
-};
-
 Game.prototype.submitAnswer = function(playerId, answerText){
 	// submission only goes through if:
 	// 1. it matches the prompt
 	// 2. the game is in the proper phase
 	// else fail silently
 	// note that, as long as it's still phase 1, the server implementation allows players to change their answers!
-	if (this.validateAnswer(answerText, this.prompt) && this.phase === 1){
+	if (validateAnswer(answerText, this.prompt, this.ignoredCharacters, this.optionallyIgnoredWords) && this.phase === 1){
 		var player = this.getPlayerById(playerId);
 		player.setAnswer(answerText);
 	};
