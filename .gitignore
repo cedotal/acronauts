@@ -1,0 +1,2 @@
+# modules to be stored in package.json with specific versions and re-installed in production
+/node_modules
