@@ -5,12 +5,12 @@ var convertObjectIntoPairOfArrays = function(object){
 		attrs: [],
 		values: []
 	};
-	for (attr in object){
+	for (var attr in object){
 		arrayPair.attrs.push(attr);
 		arrayPair.values.push(object[attr]);
 	};
 	return arrayPair;
-};
+}
 
 var constructRangeBoundariesArrayFromFrequenciesArrayPair = function(frequenciesAsPairedArrays){
 	// first, we convert the character frequency map into a pair of arrays, one holding the letters
@@ -22,10 +22,10 @@ var constructRangeBoundariesArrayFromFrequenciesArrayPair = function(frequencies
 	for (var i = 0; i < frequenciesAsPairedArrays.attrs.length - 1; i++){
 		sum += (frequenciesAsPairedArrays.values[i] / 100);
 		rangeBoundariesArray[i] = sum;
-	};
+	}
 
 	return rangeBoundariesArray;
-};
+}
 
 // construct the paired character array/character range boundaries array here, so we do it once rather than every time a function is called
 var letterFrequencies = require('./letterFrequencies.eng.js');
@@ -46,19 +46,19 @@ function randomCharacter(){
 	for (i = 0; i < characterRangeBoundariesArrayPair.characters.length && r >= characterRangeBoundariesArrayPair.rangeBoundaries[i]; i++);
 
     return characterRangeBoundariesArrayPair.characters[i];
-};
+}
 
 function generatePrompt(length){
 	var prompt = '';
 	for (var i = 0; i < length; i++){
 		prompt += randomCharacter();
-	};
+	}
 	return prompt;
-};
+}
 
 function validateAnswer(answer, prompt, ignoredCharacters, optionallyIgnoredWords){
-	if (ignoredCharacters === undefined) ignoredCharacters = [];
-	if (optionallyIgnoredWords === undefined) optionallyIgnoredWords = [];
+	if (ignoredCharacters === undefined) { ignoredCharacters = [] };
+	if (optionallyIgnoredWords === undefined) { optionallyIgnoredWords = [] };
 	prompt = prompt.toLowerCase();
 	answer = answer.toLowerCase();
 	ignoredCharacters.forEach(function(character){
@@ -77,12 +77,12 @@ function validateAnswer(answer, prompt, ignoredCharacters, optionallyIgnoredWord
 			} else {
 				// failed test
 				return false;
-			};
-		};
-	};
+			}
+		}
+	}
 	// even after our looping, it's possible that there could be extra segments in splitAnswer
 	return prompt.length === splitAnswer.length;
-};
+}
 
 module.exports.generatePrompt = generatePrompt;
 module.exports.validateAnswer = validateAnswer;

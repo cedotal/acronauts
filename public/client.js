@@ -1,6 +1,6 @@
 
 var socket = io.connect('http://localhost:3700');
-// 	var socket = io.connect('http://somehappenings.com:3700');
+//	var socket = io.connect('http://somehappenings.com:3700');
 
 // figure out if an answer is a legal match for a given prompt
 // TODO: figure out a way for this to be derived from the same code as the server-side version
@@ -22,12 +22,12 @@ function validateAnswer(answer, prompt, ignoredCharacters, optionallyIgnoredWord
 			} else {
 				// failed test
 				return false;
-			};
-		};
-	};
+			}
+		}
+	}
 	// even after our looping, it's possible that there could be extra segments in splitAnswer
 	return prompt.length === splitAnswer.length;
-};
+}
 
 // accepts a gameState and figures out whether it's currently:
 // (0) before the start of the game clock
@@ -42,7 +42,7 @@ var clockStateFromGameState = function(gameState){
 		return 1;
 	} else {
 		return 2;
-	};
+	}
 };
 
 
@@ -68,19 +68,19 @@ views.StatusView = function(el){
 						classToAdd = 'minorWarning';
 					} else if (secondsLeft <= 5) {
 						classToAdd = 'majorWarning';
-					};
+					}
 				} else if (clockState === 2) {
 					htmlOutput = 'Time\'s up!';
 				} else {
 					console.log('you\'ve done something terribly wrong with clockState');
-				};
+				}
 				$(el).html(htmlOutput);
 				break;
 			default:
 				htmlOutput = 'An invalid game phase has been reached.';
-		};
+		}
 		$(el).html(htmlOutput);
-		if (classToAdd !== undefined) $(el).addClass(classToAdd); 
+		if (classToAdd !== undefined) { $(el).addClass(classToAdd) }; 
 	};
 };
 
@@ -95,7 +95,7 @@ views.InputView = function(el){
 				break;
 			case 1:
 			var clockState = clockStateFromGameState(gameState);
-				if (clockState == 1){
+				if (clockState === 1){
 					var timeoutValue = gameState.clockStart - new Date().getTime();
 					setTimeout(function(){
 						htmlOutput += '<div>Type in your backronym:<form id="answerPrompt"><input id="answerPromptInput" type="text"></input><input type="submit"></input></form></div>';
@@ -111,19 +111,19 @@ views.InputView = function(el){
 								$('input').attr('disabled', true);
 							} else {
 								alert('That answer doesn\'t match the acronym given - try again!');
-							};
+							}
 							return false;
 						});
 					}, timeoutValue);
 					// turn off autoupdate so it doesn't eat the reponses
 					self.autoupdate = false;
-				};
+				}
 				break;
 			default:
 				htmlOutput = 'An invalid game phase has been reached.';
 				$(el).html(htmlOutput);
-		};
-	}
+		}
+	};
 };
 
 views.PlayerListView = function(el){
@@ -172,15 +172,15 @@ views.PromptView = function(el){
 				if (clockState === 0) {
 					for (var i = 0; i < gameState.promptLength; i++){
 						htmlOutput += '_';
-					};
+					}
 				} else {
 					htmlOutput = gameState.prompt.toUpperCase();
-				};
+				}
 				$(el).html(htmlOutput);
 				break;
 			default:
 				console.log('an invalid game state has been passed to promptView');
-		};
+		}
 	};
 };
 
@@ -198,7 +198,7 @@ views.VotingView = function(el){
 						$('#' + player.id).attr('disabled', true);
 					});
 				});
-			};
+			}
 		});
 		// turn autoupdate to false so new game states being sent from the server don't reset the diabled attr
 		self.autoupdate = false;
@@ -227,21 +227,21 @@ views.DocumentTitleView = function(){
 		var newDocumentTitle = '';
 		switch(gameState.phase){
 			case 0:
-				newDocumentTitle = 'Acronauts - Gathering players'
+				newDocumentTitle = 'Acronauts - Gathering players';
 				break;
 			case 1:
-				newDocumentTitle = 'Acronauts - Game on!'
+				newDocumentTitle = 'Acronauts - Game on!';
 				break;
 			case 2:
-				newDocumentTitle = 'Acronauts - Voting'
+				newDocumentTitle = 'Acronauts - Voting';
 				break;
 			case 3:
-				newDocumentTitle = 'Acronauts - Game over'
+				newDocumentTitle = 'Acronauts - Game over';
 				break;
 			case 4:
 				newDocumentTitle = 'Acronauts - Game does not exist'
 				break;
-		};
+		}
 		document.title = newDocumentTitle;
 	};
 };
@@ -260,7 +260,7 @@ function ViewController(controllerEl, viewConfig){
 		var viewEl = '#' + viewName;
 		self.views.push(new views[view](viewEl));
 	});
-};
+}
 
 ViewController.prototype.renderViews = function(gameState){
 	this.views.forEach(function(view){
@@ -268,7 +268,7 @@ ViewController.prototype.renderViews = function(gameState){
 		// eat user input or fail to maintain disabled state
 		if (view.autoupdate !== false){
 			view.render(gameState);
-		};
+		}
 	});
 };
 
@@ -324,7 +324,7 @@ function MasterController(el){
 					'GameClosedView'
 				]);
 				break;
-		};
+		}
 	};
 
 	// whenever a new game state comes in, do the following
@@ -334,7 +334,7 @@ function MasterController(el){
 		// init a new controller in place of the old one
 		if (self.previousGameStateFromServer.phase !== gameState.phase){
 			self.initNewGameViewController(gameState);
-		};
+		}
 
 		// 2. render all views in the current controller
 		self.viewController.renderViews(gameState);
@@ -342,6 +342,6 @@ function MasterController(el){
 		// 3. set the new previous game state.
 		self.previousGameStateFromServer = gameState;
 	});
-};
+}
 
 var controller = new MasterController('#wrapper');

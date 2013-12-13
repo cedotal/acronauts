@@ -47,7 +47,7 @@ function Lobby(io){
 	setInterval(function(){
 		self.purgeEndedGames();
 	}, 5000);
-};
+}
 
 Lobby.prototype.addGame = function(game){
 	this.currentGames.push(game);
@@ -56,10 +56,10 @@ Lobby.prototype.addGame = function(game){
 Lobby.prototype.purgeEndedGames = function(){
 	this.currentGames = this.currentGames.filter(function(currentGame){
 		if (currentGame.phase === 4 && currentGame.players.length === 0){
-			return false
+			return false;
 		} else {
 			return true;
-		};
+		}
 	});
 };
 
@@ -73,8 +73,8 @@ Lobby.prototype.addPlayerToOpenGame = function(player){
 			playerAssigned = true;
 			console.log('adding player to previously-existing game with id %s', currentGame.id);
 			return self.currentGames[i];
-		};
-	};
+		}
+	}
 	// if we made it this far, the player was not assigned to any open games, so we have to create a new one
 	var newGame = new Game(this.io, this.gameIdCounter);
 	this.gameIdCounter++;
@@ -100,7 +100,7 @@ function Game(io, gameId){
 	setInterval(function(){
 		self.tick();
 	}, 500);
-};
+}
 
 Game.prototype.tick = function(){
 	var self = this;
@@ -108,24 +108,24 @@ Game.prototype.tick = function(){
 		case 0:
 			if(this.checkIfGameCanBegin() === true){
 				this.begin();
-			};
+			}
 			break;
 		case 1:
 			if(this.checkIfAnsweringIsComplete() === true){
 				this.endAnswering();
-			};
+			}
 			break;
 		case 2:
 			if(this.checkIfVotingIsComplete() === true){
 				this.endVoting();
-			};
+			}
 			break;
 		case 3:
 			if(this.checkIfGameCanBeRemoved === true){
 				this.markGameForRemoval();
-			};
+			}
 			break;
-	};
+	}
 	this.players.forEach(function(player){
 		player.socket.emit('gameState', self.marshalPublicObject());
 	});
@@ -167,7 +167,7 @@ Game.prototype.checkIfGameCanBegin = function(){
 		return true;
 	} else {
 		return false;
-	};
+	}
 };
 
 Game.prototype.checkIfAnsweringIsComplete = function(){
@@ -175,7 +175,7 @@ Game.prototype.checkIfAnsweringIsComplete = function(){
 	this.players.forEach(function(player){
 		if (player.answer.text !== undefined && player.answer.text !== ''){
 			totalAnswers += 1;
-		};
+		}
 	});
 	// answering is complete if either everyone has answered, or we're past the end of the clock
 	return totalAnswers >= this.players.length || Date.now() >= this.clockEnd;
@@ -207,26 +207,26 @@ Game.prototype.begin = function(){
 		setTimeout(function(){
 			self.endAnswering();
 		}, answeringEndTimestamp);
-	};
+	}
 };
 
 Game.prototype.endAnswering = function(){
 	if (this.phase === 1){
 		this.phase = 2;
-	};
+	}
 };
 
 Game.prototype.endVoting = function(){
 	if (this.phase === 2){
 		this.phase = 3;
 		this.judgeGame();
-	};
+	}
 };
 
 Game.prototype.markGameForRemoval = function(){
 	if (this.phase === 3){
 		this.phase = 4;
-	};
+	}
 };
 
 Game.prototype.addPlayer = function(player){
@@ -243,7 +243,7 @@ Game.prototype.addPlayer = function(player){
 			self.removePlayerById(player.socket.id);
 		});
 		this.players.push(player);
-	};
+	}
 };
 
 Game.prototype.submitAnswer = function(playerId, answerText){
@@ -255,7 +255,7 @@ Game.prototype.submitAnswer = function(playerId, answerText){
 	if (validateAnswer(answerText, this.prompt, this.ignoredCharacters, this.optionallyIgnoredWords) && this.phase === 1){
 		var player = this.getPlayerById(playerId);
 		player.setAnswer(answerText);
-	};
+	}
 };
 
 Game.prototype.submitVote = function(voterId, voteeId){
@@ -267,7 +267,7 @@ Game.prototype.submitVote = function(voterId, voteeId){
 	if (voterId !== voteeId && this.phase === 2){
 		var votee = this.getPlayerById(voteeId);
 		votee.addVote(voterId);
-	};
+	}
 };
 
 Game.prototype.getPlayerById = function(id){
@@ -276,7 +276,7 @@ Game.prototype.getPlayerById = function(id){
 			return true;
 		} else {
 			return false;
-		};
+		}
 	})[0];
 	return matchedPlayer;
 };
@@ -285,13 +285,13 @@ Game.prototype.removePlayerById = function(id){
 	var self = this;
 	var indexOfPlayerToRemove;
 	for (var i = 0; i < this.players.length; i++){
-		if (self.players[i].socket.id === id) indexOfPlayerToRemove = i;
-	};
+		if (self.players[i].socket.id === id) { indexOfPlayerToRemove = i };
+	}
 	this.players.splice(indexOfPlayerToRemove, 1);
 	// player departure requires a new check for whether the game is viable or not
 	if (this.checkIfGameCanBeRemoved()){
 		this.markGameForRemoval();
-	};
+	}
 };
 
 Game.prototype.judgeGame = function(){
@@ -302,16 +302,16 @@ Game.prototype.judgeGame = function(){
 			return -1;
 		// tiebreaker: who answered first?
 		} else if (a.answer.timestamp > b.answer.timestamp) {
-			return 1
+			return 1;
 		} else if (a.answer.timestamp < b.answer.timestamp) {
-			return -1
+			return -1;
 		} else {
 			return 0;
-		};
+		}
 	});
 	// players may leave the room after the game is complete, but we still need their results around
 	// this needs to be a deep copy, not a pointer pass, otherwise it won't work
-	this.results = this.players.map(function(player){ return player.marshalPublicObject() });
+	this.results = this.players.map(function(player){ return player.marshalPublicObject(); });
 	this.results = JSON.parse(JSON.stringify(this.results));
 };
 
@@ -320,7 +320,7 @@ function Player(socket){
 	this.socket = socket;
 	this.voters = [];
 	this.answer = {};
-};
+}
 
 // validity checking for addVote and setAnswer are performed at the game level, not the player level
 Player.prototype.addVote = function(votingPlayerId){
