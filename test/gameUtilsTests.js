@@ -1,29 +1,29 @@
-var assert = require('assert');
+var should = require('should');
 var gameUtils = require('../gameUtils');
 
 var validateAnswer = gameUtils.validateAnswer;
 
 describe('validateAnswer', function(){
 	it('should accept plain old valid answers', function(){
-		assert.equal(validateAnswer('bene gesserit witch', 'bgw'), true);
+		validateAnswer('bene gesserit witch', 'bgw').should.be.true;
 	});
 	it('should properly handle extra whitespace', function(){
-		assert.equal(validateAnswer('bene      gesserit    witch', 'bgw'), true);
+		validateAnswer('bene      gesserit    witch', 'bgw').should.be.true;
 	});
 	it('should reject answers that are too short for the prompt', function(){
-		assert.equal(validateAnswer('bene gesserit witch', 'bgwy'), false);
+		validateAnswer('bene gesserit witch', 'bgwy').should.be.false;
 	});
 	it('should reject answers that are too long for the prompt', function(){
-		assert.equal(validateAnswer('bene gesserit witch', 'bg'), false);
+		validateAnswer('bene gesserit witch', 'bg').should.be.false;
 	});
 	it('should properly ignore ignored characters', function(){
-		assert.equal(validateAnswer('123sp321ice m1us32t321 12fl32ow1', 'smf', ['1', '2', '3']), true);
+		validateAnswer('123sp321ice m1us32t321 12fl32ow1', 'smf', ['1', '2', '3']).should.be.true;
 	});
 	it('should properly ignore optionally ignored words', function(){
-		assert.equal(validateAnswer('the spice must flow', 'smf', [], ['the']), true);
+		validateAnswer('the spice must flow', 'smf', [], ['the']).should.be.true;
 	});
 	it('should deal properly with funky capitalization', function(){
-		assert.equal(validateAnswer('Fear Is the mind killer', 'fitMK'), true);
+		validateAnswer('Fear Is the mind killer', 'fitMK').should.be.true;
 	});
 });
 
