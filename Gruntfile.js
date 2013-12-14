@@ -1,21 +1,35 @@
 module.exports = function(grunt) {
 
+    require('load-grunt-tasks')(grunt);
+
     grunt.initConfig({
         shell: {
-            runServer: {
+            killServers: {
                 options: {
-                    stdout: true
+                    stdout: true,
+                    stdin: true,
+                    stderr: true,
+                    failOnError:true
                 },
-                command: [
-                    'killall -9 node',
-                    'nodemon -e js,json,html,jade,css ./server/server.js'
-                ].join('&&')
+                command: 'killall -9 node'
+            }
+        },
+        concurrent: {
+            dev: {
+                tasks: ['nodemon', 'jshint', 'mochaTest', 'watch'],
+                options: {
+                    logConcurrentOutput: true
+                }
+            }
+        },
+        nodemon: {
+            options: {
+                file: './server/server.js',
+                watchedExtensions: ['js', 'json', 'css', 'jade', '']
             }
         },
         jshint: {
             options: grunt.file.readJSON('./.jshintrc'),
-            // TODO: add specific options for each sub-task relfecting the expectations for each
-            // environment (i.e., node: true)
             client: {
                 src: './public/client.js',
                 options: {
@@ -29,7 +43,7 @@ module.exports = function(grunt) {
                 }
             },
             server: {
-                src: './server/*',
+                src: './server/**',
                 options: {
                     devel: true,
                     node: true
@@ -71,13 +85,7 @@ module.exports = function(grunt) {
         }
     });
 
-    // Load tasks
-    grunt.loadNpmTasks('grunt-contrib-jshint');
-    grunt.loadNpmTasks('grunt-contrib-watch');
-    grunt.loadNpmTasks('grunt-mocha-test');
-    grunt.loadNpmTasks('grunt-shell');
-
     // Default task.
-    grunt.registerTask('default', ['shell:runServer']);
+    grunt.registerTask('default', ['shell:killServers', 'concurrent:dev']);
     grunt.registerTask('test', ['mochaTest']);
 };
