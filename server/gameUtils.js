@@ -28,7 +28,7 @@ var constructRangeBoundariesArrayFromFrequenciesArrayPair = function(frequencies
 };
 
 // construct the paired character array/character range boundaries array here, so we do it once rather than every time a function is called
-var letterFrequencies = require('./letterFrequencies.eng.js');
+var letterFrequencies = require('./data/letterFrequencies.eng.json');
 var characterFrequenciesArrayPair = convertObjectIntoPairOfArrays(letterFrequencies);
 var characterRangeBoundariesArray = constructRangeBoundariesArrayFromFrequenciesArrayPair(characterFrequenciesArrayPair);
 var characterRangeBoundariesArrayPair = {
