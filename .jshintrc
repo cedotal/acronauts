@@ -10,13 +10,5 @@
     "undef": true,
     "boss": true,
     "eqnull": true,
-    "browser": true,
-    "globals": {
-        "require": true,
-        "define": true,
-        "requirejs": true,
-        "describe": true,
-        "expect": true,
-        "it": true
-    }
+    "browser": true
 }
