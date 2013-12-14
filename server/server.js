@@ -4,7 +4,6 @@ var express = require('express');
 var app = express();
 
 // set up jade templating
-console.log(__dirname);
 app.set('views', __dirname + '/../templates');
 app.set('view engine', 'jade');
 app.engine('jade', require('jade').__express);
