@@ -1,5 +1,5 @@
 var should = require('should');
-var gameUtils = require('../gameUtils');
+var gameUtils = require('../server/gameUtils');
 
 var validateAnswer = gameUtils.validateAnswer;
 
@@ -26,7 +26,6 @@ describe('validateAnswer', function(){
 		validateAnswer('Fear Is the mind killer', 'fitMK').should.be.true;
 	});
 });
-
 
 /*
 
