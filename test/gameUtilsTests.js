@@ -17,10 +17,14 @@ describe('validateAnswer', function(){
 		validateAnswer('bene gesserit witch', 'bg').should.be.false;
 	});
 	it('should properly ignore ignored characters', function(){
-		validateAnswer('123sp321ice m1us32t321 12fl32ow1', 'smf', ['1', '2', '3']).should.be.true;
+		validateAnswer('123sp321ice m1us32t321 12fl32ow1', 'smf', {
+			ignoredCharacters: ['1', '2', '3']
+		}).should.be.true;
 	});
 	it('should properly ignore optionally ignored words', function(){
-		validateAnswer('the spice must flow', 'smf', [], ['the']).should.be.true;
+		validateAnswer('the spice must flow', 'smf', {
+			optionallyIgnoredWords: ['the']
+		}).should.be.true;
 	});
 	it('should deal properly with funky capitalization', function(){
 		validateAnswer('Fear Is the mind killer', 'fitMK').should.be.true;

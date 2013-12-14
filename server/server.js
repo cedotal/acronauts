@@ -235,7 +235,11 @@ Game.prototype.submitAnswer = function(playerId, answerText){
 	// 2. the game is in the proper phase
 	// else fail silently
 	// note that, as long as it's still phase 1, the server implementation allows players to change their answers!
-	if (validateAnswer(answerText, this.prompt, this.ignoredCharacters, this.optionallyIgnoredWords) && this.phase === 1){
+	var answerValidity = validateAnswer(answerText, this.prompt, {
+		ignoredCharacters: this.ignoredCharacters,
+		optionallyIgnoredWords: this.optionallyIgnoredWords
+	}); 
+	if (answerValidity && this.phase === 1){
 		var player = this.getPlayerById(playerId);
 		player.setAnswer(answerText);
 	}

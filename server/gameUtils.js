@@ -1,5 +1,6 @@
-// prompt generation
+var _ = require('underscore');
 
+// prompt generation
 var convertObjectIntoPairOfArrays = function(object){
 	var arrayPair = {
 		attrs: [],
@@ -56,22 +57,21 @@ function generatePrompt(length){
 	return prompt;
 }
 
-function validateAnswer(answer, prompt, ignoredCharacters, optionallyIgnoredWords){
-	if (ignoredCharacters === undefined) { ignoredCharacters = []; }
-	if (optionallyIgnoredWords === undefined) { optionallyIgnoredWords = []; }
+function validateAnswer(answer, prompt, options){
+	options = options || {};
+	_.defaults(options, {
+		ignoredCharacters: [],
+		optionallyIgnoredWords: []
+	});
 	prompt = prompt.toLowerCase();
 	answer = answer.toLowerCase();
-	ignoredCharacters.forEach(function(character){
-		var regExp = new RegExp(character, 'g');
-		answer = answer.replace(regExp, '');
-
-	});
-	var splitAnswer = answer.split(' ').filter(function(segment){
-		return segment !== '';
-	});
+	var regExp = new RegExp('[' + options.ignoredCharacters.join('') + ']', 'gi');
+	var splitAnswer = answer.replace(regExp, '').split(/\s+/);
+	// Possible bug: ignoredWords has to be all lowercase or matches will fail
+    // Possible bug: If we ignore a char that's present in an ignoredWord, matches will fail
 	for (var p = 0; p < prompt.length; p++){
 		while(splitAnswer[p] !== undefined && prompt[p] !== splitAnswer[p][0]){
-			if(optionallyIgnoredWords.indexOf(splitAnswer[p]) !== -1){
+			if(options.optionallyIgnoredWords.indexOf(splitAnswer[p]) !== -1){
 				// this word is being treated as being ignored, so cut it out!
 				splitAnswer.splice(p, 1);
 			} else {
