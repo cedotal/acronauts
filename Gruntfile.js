@@ -16,16 +16,19 @@ module.exports = function(grunt) {
         },
         concurrent: {
             dev: {
-                tasks: ['nodemon', 'jshint', 'mochaTest', 'watch'],
+                tasks: ['jshint', 'mochaTest', 'watch', 'nodemon'],
                 options: {
                     logConcurrentOutput: true
                 }
             }
         },
         nodemon: {
-            options: {
-                file: './server/server.js',
-                watchedExtensions: ['js', 'json', 'css', 'jade', '']
+            dev: {
+                options: {
+                    file: './server/server.js',
+                    watchedExtensions: ['js', 'json', 'css', 'jade', ''],
+                    nodeArgs: ['--debug']
+                }
             }
         },
         jshint: {
