@@ -4,15 +4,16 @@ var express = require('express');
 var app = express();
 
 // set up jade templating
-app.set('views', __dirname + '/templates');
+console.log(__dirname);
+app.set('views', __dirname + '/../templates');
 app.set('view engine', 'jade');
 app.engine('jade', require('jade').__express);
 app.get('/', function(req, res){
-	res.render("page");
+	res.render('page');
 });
 
 // set up static file server
-app.use(express.static(__dirname + '/public'));
+app.use(express.static(__dirname + '/../public'));
 
 // set up game config
 var gameConfig = {
@@ -31,57 +32,40 @@ var gameUtils = require('./gameUtils');
 var generatePrompt = gameUtils.generatePrompt;
 var validateAnswer = gameUtils.validateAnswer;
 
-// set up Lobby class
-function Lobby(io){
-	var self = this;
-	// hacky, but it works!
-	this.gameIdCounter = 0;
-	this.currentGames = [];
-	// lobby needs the io object so it can pass it to the new games it creates; io is handled at the game object level
-	this.io = io;
-	// every time a connection is made, add that player to an open game
-	this.io.sockets.on('connection', function(socket){
-		var player = new Player(socket);
-		self.addPlayerToOpenGame(player);
-	});
-	setInterval(function(){
-		self.purgeEndedGames();
-	}, 5000);
+// set up Player class
+function Player(socket){
+	this.socket = socket;
+	this.voters = [];
+	this.answer = {};
 }
 
-Lobby.prototype.addGame = function(game){
-	this.currentGames.push(game);
+// validity checking for addVote and setAnswer are performed at the game level, not the player level
+Player.prototype.addVote = function(votingPlayerId){
+	this.voters.push(votingPlayerId);
 };
 
-Lobby.prototype.purgeEndedGames = function(){
-	this.currentGames = this.currentGames.filter(function(currentGame){
-		if (currentGame.phase === 4 && currentGame.players.length === 0){
-			return false;
-		} else {
-			return true;
-		}
-	});
+Player.prototype.setAnswer = function(answerText){
+	this.answer = {
+		text: answerText,
+		timestamp: Date.now()
+	};
 };
 
-Lobby.prototype.addPlayerToOpenGame = function(player){
+// create a public version of a player object to send out to the clients. socket.io will automatically
+// strip all attrs that contain functions, but some attrs are not supposed to be public and some will,
+// when serialized, generate circular reference errors
+Player.prototype.marshalPublicObject = function(){
 	var self = this;
-	var playerAssigned = false;
-	for (var i = 0; i < self.currentGames.length ; i++){
-		var currentGame = self.currentGames[i];
-		if (currentGame.phase === 0 && currentGame.players.length < gameConfig.maxPlayers){
-			currentGame.addPlayer(player);
-			playerAssigned = true;
-			console.log('adding player to previously-existing game with id %s', currentGame.id);
-			return self.currentGames[i];
-		}
-	}
-	// if we made it this far, the player was not assigned to any open games, so we have to create a new one
-	var newGame = new Game(this.io, this.gameIdCounter);
-	this.gameIdCounter++;
-	newGame.addPlayer(player);
-	this.addGame(newGame);
-	console.log('adding player to new game with id %s', newGame.id);
-	return this.currentGames[this.currentGames.length - 1];
+	var publicObject = {};
+	var publicAttrs = [
+		'answer',
+		'voters'
+	];
+	publicAttrs.forEach(function(attr){
+		publicObject[attr] = self[attr];
+	});
+	publicObject.id = self.socket.id;
+	return publicObject;
 };
 
 // set up Game class
@@ -285,7 +269,7 @@ Game.prototype.removePlayerById = function(id){
 	var self = this;
 	var indexOfPlayerToRemove;
 	for (var i = 0; i < this.players.length; i++){
-		if (self.players[i].socket.id === id) { indexOfPlayerToRemove = i };
+		if (self.players[i].socket.id === id) { indexOfPlayerToRemove = i; }
 	}
 	this.players.splice(indexOfPlayerToRemove, 1);
 	// player departure requires a new check for whether the game is viable or not
@@ -315,42 +299,58 @@ Game.prototype.judgeGame = function(){
 	this.results = JSON.parse(JSON.stringify(this.results));
 };
 
-// set up Player class
-function Player(socket){
-	this.socket = socket;
-	this.voters = [];
-	this.answer = {};
+// set up Lobby class
+function Lobby(io){
+	var self = this;
+	// hacky, but it works!
+	this.gameIdCounter = 0;
+	this.currentGames = [];
+	// lobby needs the io object so it can pass it to the new games it creates; io is handled at the game object level
+	this.io = io;
+	// every time a connection is made, add that player to an open game
+	this.io.sockets.on('connection', function(socket){
+		var player = new Player(socket);
+		self.addPlayerToOpenGame(player);
+	});
+	setInterval(function(){
+		self.purgeEndedGames();
+	}, 5000);
 }
 
-// validity checking for addVote and setAnswer are performed at the game level, not the player level
-Player.prototype.addVote = function(votingPlayerId){
-	this.voters.push(votingPlayerId);
+Lobby.prototype.addGame = function(game){
+	this.currentGames.push(game);
 };
 
-Player.prototype.setAnswer = function(answerText){
-	this.answer = {
-		text: answerText,
-		timestamp: Date.now()
-	};
-};
-
-// create a public version of a player object to send out to the clients. socket.io will automatically
-// strip all attrs that contain functions, but some attrs are not supposed to be public and some will,
-// when serialized, generate circular reference errors
-Player.prototype.marshalPublicObject = function(){
-	var self = this;
-	var publicObject = {};
-	var publicAttrs = [
-		'answer',
-		'voters'
-	];
-	publicAttrs.forEach(function(attr){
-		publicObject[attr] = self[attr];
+Lobby.prototype.purgeEndedGames = function(){
+	this.currentGames = this.currentGames.filter(function(currentGame){
+		if (currentGame.phase === 4 && currentGame.players.length === 0){
+			return false;
+		} else {
+			return true;
+		}
 	});
-	publicObject.id = self.socket.id;
-	return publicObject;
 };
 
+Lobby.prototype.addPlayerToOpenGame = function(player){
+	var self = this;
+	var playerAssigned = false;
+	for (var i = 0; i < self.currentGames.length ; i++){
+		var currentGame = self.currentGames[i];
+		if (currentGame.phase === 0 && currentGame.players.length < gameConfig.maxPlayers){
+			currentGame.addPlayer(player);
+			playerAssigned = true;
+			console.log('adding player to previously-existing game with id %s', currentGame.id);
+			return self.currentGames[i];
+		}
+	}
+	// if we made it this far, the player was not assigned to any open games, so we have to create a new one
+	var newGame = new Game(this.io, this.gameIdCounter);
+	this.gameIdCounter++;
+	newGame.addPlayer(player);
+	this.addGame(newGame);
+	console.log('adding player to new game with id %s', newGame.id);
+	return this.currentGames[this.currentGames.length - 1];
+};
 
 // set up socket.io listener and events
 var port = 3700;

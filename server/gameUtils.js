@@ -8,9 +8,9 @@ var convertObjectIntoPairOfArrays = function(object){
 	for (var attr in object){
 		arrayPair.attrs.push(attr);
 		arrayPair.values.push(object[attr]);
-	};
+	}
 	return arrayPair;
-}
+};
 
 var constructRangeBoundariesArrayFromFrequenciesArrayPair = function(frequenciesAsPairedArrays){
 	// first, we convert the character frequency map into a pair of arrays, one holding the letters
@@ -25,7 +25,7 @@ var constructRangeBoundariesArrayFromFrequenciesArrayPair = function(frequencies
 	}
 
 	return rangeBoundariesArray;
-}
+};
 
 // construct the paired character array/character range boundaries array here, so we do it once rather than every time a function is called
 var letterFrequencies = require('./letterFrequencies.eng.js');
@@ -43,7 +43,7 @@ function randomCharacter(){
 
 	var i = 0;
 
-	for (i = 0; i < characterRangeBoundariesArrayPair.characters.length && r >= characterRangeBoundariesArrayPair.rangeBoundaries[i]; i++);
+	for (i = 0; i < characterRangeBoundariesArrayPair.characters.length && r >= characterRangeBoundariesArrayPair.rangeBoundaries[i]; i++){}
 
     return characterRangeBoundariesArrayPair.characters[i];
 }
@@ -57,8 +57,8 @@ function generatePrompt(length){
 }
 
 function validateAnswer(answer, prompt, ignoredCharacters, optionallyIgnoredWords){
-	if (ignoredCharacters === undefined) { ignoredCharacters = [] };
-	if (optionallyIgnoredWords === undefined) { optionallyIgnoredWords = [] };
+	if (ignoredCharacters === undefined) { ignoredCharacters = []; }
+	if (optionallyIgnoredWords === undefined) { optionallyIgnoredWords = []; }
 	prompt = prompt.toLowerCase();
 	answer = answer.toLowerCase();
 	ignoredCharacters.forEach(function(character){
@@ -66,7 +66,7 @@ function validateAnswer(answer, prompt, ignoredCharacters, optionallyIgnoredWord
 		answer = answer.replace(regExp, '');
 
 	});
-	splitAnswer = answer.split(' ').filter(function(segment){
+	var splitAnswer = answer.split(' ').filter(function(segment){
 		return segment !== '';
 	});
 	for (var p = 0; p < prompt.length; p++){

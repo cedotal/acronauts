@@ -4,19 +4,19 @@ var socket = io.connect('http://localhost:3700');
 
 // figure out if an answer is a legal match for a given prompt
 // TODO: figure out a way for this to be derived from the same code as the server-side version
-function validateAnswer(answer, prompt, ignoredCharacters, optionallyIgnoredWords){
+function validateAnswer(answer, prompt){
 	var ignoredCharacters = ['\'', '\"'];
 	var potentiallyIgnoredWords = ['a', 'an', 'the'];
 	answer = answer.toLowerCase();
 	ignoredCharacters.forEach(function(character){
 		answer = answer.replace(character, '');
 	});
-	splitAnswer = answer.split(' ').filter(function(segment){
+	var splitAnswer = answer.split(' ').filter(function(segment){
 		return segment !== ' ';
 	});
 	for (var p = 0; p < prompt.length; p++){
 		while(prompt[p] !== splitAnswer[p]){
-			if(optionallyIgnoredWords.indexOf(splitAnswer[p]) !== -1){
+			if(potentiallyIgnoredWords.indexOf(splitAnswer[p]) !== -1){
 				// this word is being treated as being ignored, so cut it out!
 				splitAnswer.splice(p, 1);
 			} else {
@@ -52,6 +52,7 @@ var views = {};
 views.StatusView = function(el){
 	this.render = function(gameState){
 		var classToAdd;
+		var htmlOutput;
 		switch (gameState.phase){
 			case 0:
 				htmlOutput = 'Waiting for players to join...';
@@ -80,7 +81,7 @@ views.StatusView = function(el){
 				htmlOutput = 'An invalid game phase has been reached.';
 		}
 		$(el).html(htmlOutput);
-		if (classToAdd !== undefined) { $(el).addClass(classToAdd) }; 
+		if (classToAdd !== undefined) { $(el).addClass(classToAdd); } 
 	};
 };
 
@@ -131,7 +132,7 @@ views.PlayerListView = function(el){
 		var gamePhase = gameState.phase;
 		var intervalSet = false;
 		var playerListElement = $(el);
-
+		var htmlOutput;
 		switch(gamePhase){
 			case 0:
 			case 1:
@@ -141,7 +142,7 @@ views.PlayerListView = function(el){
 					htmlOutput += '<div>' + player.id;
 					if (player.id === socket.socket.sessionid){
 						htmlOutput += ' (YOU)';
-					} ;
+					}
 					htmlOutput += '</div>';
 				});
 				playerListElement.html(htmlOutput);
@@ -149,7 +150,7 @@ views.PlayerListView = function(el){
 			default:
 				htmlOutput = 'An invalid game phase has been reached.';
 				playerListElement.html(htmlOutput);
-		};
+		}
 	};
 };
 
@@ -157,20 +158,21 @@ views.PlayerListView = function(el){
 views.PromptView = function(el){
 	var self = this;
 	this.render = function(gameState){
+		var htmlOutput;
 		var gamePhase = gameState.phase;
+		var i;
 		switch(gamePhase){
 			case 0:
-				var htmlOutput = '';
-				for (var i = 0; i < gameState.promptLength; i++){
+				for (i = 0; i < gameState.promptLength; i++){
 					htmlOutput += '_';
-				};
+				}
 				$(el).html(htmlOutput);
 				break;
 			case 1:
 				var clockState = clockStateFromGameState(gameState);
-				var htmlOutput = '';
+				htmlOutput = '';
 				if (clockState === 0) {
-					for (var i = 0; i < gameState.promptLength; i++){
+					for (i = 0; i < gameState.promptLength; i++){
 						htmlOutput += '_';
 					}
 				} else {
@@ -239,7 +241,7 @@ views.DocumentTitleView = function(){
 				newDocumentTitle = 'Acronauts - Game over';
 				break;
 			case 4:
-				newDocumentTitle = 'Acronauts - Game does not exist'
+				newDocumentTitle = 'Acronauts - Game does not exist';
 				break;
 		}
 		document.title = newDocumentTitle;
