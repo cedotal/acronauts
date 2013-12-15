@@ -158,7 +158,7 @@ views.PlayerListView = function(el){
 views.PromptView = function(el){
 	var self = this;
 	this.render = function(gameState){
-		var htmlOutput;
+		var htmlOutput = '';
 		var gamePhase = gameState.phase;
 		var i;
 		switch(gamePhase){
