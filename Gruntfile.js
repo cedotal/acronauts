@@ -3,17 +3,6 @@ module.exports = function(grunt) {
     require('load-grunt-tasks')(grunt);
 
     grunt.initConfig({
-        shell: {
-            killServers: {
-                options: {
-                    stdout: true,
-                    stdin: true,
-                    stderr: true,
-                    failOnError:true
-                },
-                command: 'killall -9 node'
-            }
-        },
         concurrent: {
             dev: {
                 tasks: ['jshint', 'mochaTest', 'watch'],
@@ -89,6 +78,6 @@ module.exports = function(grunt) {
     });
 
     // Default task.
-    grunt.registerTask('default', ['shell:killServers', 'concurrent:dev']);
+    grunt.registerTask('default', ['concurrent:dev']);
     grunt.registerTask('test', ['mochaTest']);
 };
