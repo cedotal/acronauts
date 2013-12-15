@@ -18,8 +18,8 @@ app.use(express.static(__dirname + '/../public'));
 var gameConfig = {
 	promptLength: 5, // the number of characters in an acronauts prompt
 	clockLength: 60, // the amount of time players have to answer the prompt
-	gameStartDelay: 5, // the minimum amount of time players should have
-	idealGameWait: 15, // the maximum amount of time that players will ideally wait for additional players to be added on top of minPlayers 
+	gameStartDelay: 15, // the minimum amount of time players should have
+	idealGameWait: 5, // the maximum amount of time that players will ideally wait for additional players to be added on top of minPlayers 
 	maxPlayers: 8, // the most players we should have in a game
 	minPlayers: 3, // the fewest players we should have in a game
 	ignoredCharacters: ['\'', '\"'], // characters that will always be ignored if part of an answer
@@ -186,10 +186,10 @@ Game.prototype.begin = function(){
 		this.clockStart = Date.now() + gameConfig.gameStartDelay * 1000;
 		this.clockEnd = Date.now() + (gameConfig.gameStartDelay + gameConfig.clockLength) * 1000;
 		this.phase = 1;
-		var answeringEndTimestamp = self.clockEnd - Date.now();
+		var answeringEndTimer = self.clockEnd - Date.now();
 		setTimeout(function(){
 			self.endAnswering();
-		}, answeringEndTimestamp);
+		}, answeringEndTimer);
 	}
 };
 
@@ -358,6 +358,6 @@ Lobby.prototype.addPlayerToOpenGame = function(player){
 // set up socket.io listener and events
 var port = 3700;
 
-var io = require('socket.io').listen(app.listen(port), { log: true });
+var io = require('socket.io').listen(app.listen(port, '0.0.0.0'), { log: true });
 
 var lobby = new Lobby(io);

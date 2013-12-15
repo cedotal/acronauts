@@ -1,39 +1,19 @@
+requirejs.config({
+	paths: {
+		jquery: 'jquery-2.0.3.min'
+	}
+});
+
+requirejs(['jquery', 'validateAnswer'], function($, validateAnswer){
 
 var socket = io.connect('http://localhost:3700');
-//	var socket = io.connect('http://somehappenings.com:3700');
+// var socket = io.connect('http://somehappenings.com:3700');
 
-// figure out if an answer is a legal match for a given prompt
-// TODO: figure out a way for this to be derived from the same code as the server-side version
-function validateAnswer(answer, prompt){
-	var ignoredCharacters = ['\'', '\"'];
-	var potentiallyIgnoredWords = ['a', 'an', 'the'];
-	answer = answer.toLowerCase();
-	ignoredCharacters.forEach(function(character){
-		answer = answer.replace(character, '');
-	});
-	var splitAnswer = answer.split(' ').filter(function(segment){
-		return segment !== ' ';
-	});
-	for (var p = 0; p < prompt.length; p++){
-		while(prompt[p] !== splitAnswer[p]){
-			if(potentiallyIgnoredWords.indexOf(splitAnswer[p]) !== -1){
-				// this word is being treated as being ignored, so cut it out!
-				splitAnswer.splice(p, 1);
-			} else {
-				// failed test
-				return false;
-			}
-		}
-	}
-	// even after our looping, it's possible that there could be extra segments in splitAnswer
-	return prompt.length === splitAnswer.length;
-}
 
 // accepts a gameState and figures out whether it's currently:
 // (0) before the start of the game clock
 // (1) after the start of the game clock, but before the end of the game clock
 // (2) after the end of the game clock
-
 var clockStateFromGameState = function(gameState){
 	var currentTime = new Date().getTime();
 	if (currentTime < gameState.clockStart){
@@ -346,4 +326,7 @@ function MasterController(el){
 	});
 }
 
+
 var controller = new MasterController('#wrapper');
+
+});
