@@ -23,14 +23,20 @@ module.exports = function(grunt) {
         jshint: {
             options: grunt.file.readJSON('./.jshintrc'),
             client: {
-                src: './public/client.js',
+                src: ['./public/js/client.js',
+                    './public/js/views/*.js',
+                    './public/js/controllers/*.js',
+                    './public/js/utils/*.js'
+                ],
                 options: {
                     browser: true,
                     jquery: true,
                     devel: true,
                     globals: {
                         // socket.io object
-                        io: true
+                        io: true,
+                        requirejs: true,
+                        define: true
                     }
                 }
             },
