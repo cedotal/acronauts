@@ -146,7 +146,10 @@ requirejs([
 		socket.on('gameState', function(gameState){
 			// modify gameState so that the (naive) views know which of the players in the gameState
 			// is the client
-			_.find(gameState.players, function(player){ return player.id === socket.socket.sessionid }).isClient = true;
+			var currentPlayer = _.find(gameState.players, function(player){
+				return player.id === socket.socket.sessionid;
+			});
+			currentPlayer.isClient = true;
 			// check the previous game phase. if it does not equal the new game phase being passed in,
 			// init a new controller in place of the old one
 			if (self.previousGameStateFromServer.phase !== gameState.phase){

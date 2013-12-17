@@ -33,8 +33,6 @@ var validateAnswer = gameUtils.validateAnswer;
 
 // set up Player class
 function Player(socket, options){
-	console.log('Player options');
-	console.log(options);
 	this.socket = socket;
 	this.name = options.name;
 	this.voters = [];
@@ -317,11 +315,9 @@ function Lobby(io){
 	// every time a login is made, add that player to an open game
 	this.io.sockets.on('connection', function(socket){
 		socket.on('login', function(options){
-			console.log(options);
 			var player = new Player(socket, options);
 			self.addPlayerToOpenGame(player);
-		});
-		
+		});		
 	});
 	setInterval(function(){
 		self.purgeEndedGames();

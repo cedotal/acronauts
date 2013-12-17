@@ -36,7 +36,8 @@ module.exports = function(grunt) {
                         // socket.io object
                         io: true,
                         requirejs: true,
-                        define: true
+                        define: true,
+                        Backbone: true
                     }
                 }
             },
