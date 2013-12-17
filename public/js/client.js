@@ -143,6 +143,7 @@ requirejs([
 
 		// whenever a new game state comes in, do the following
 		socket.on('gameState', function(gameState){
+			console.log('recieving gameState: %j', gameState);
 			// modify gameState so that the (naive) views know which of the players in the gameState
 			// is the client
 			var currentPlayer = _.find(gameState.players, function(player){
@@ -176,6 +177,15 @@ requirejs([
 
 		Backbone.on('leaveGame', function(payload){
 			socket.emit('leaveGame', payload);
+		});
+
+		Backbone.on('updatePlayerStatus', function(payload){
+			var serverPayload = {
+				playerId: socket.socket.sessionid,
+				newStatus: payload
+			};
+			console.log('emitting updatePlayerStatus with payload: %j', serverPayload);
+			socket.emit('updatePlayerStatus', serverPayload);
 		});
 	}
 

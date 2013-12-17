@@ -4,6 +4,7 @@ function Player(socket, options){
     this.name = options.name;
     this.voters = [];
     this.answer = {};
+    this.status = 0;
 }
 
 // validity checking for addVote and setAnswer are performed at the game level, not the player level
@@ -27,7 +28,8 @@ Player.prototype.marshalPublicObject = function(){
     var publicAttrs = [
         'answer',
         'voters',
-        'name'
+        'name',
+        'status'
     ];
     publicAttrs.forEach(function(attr){
         publicObject[attr] = self[attr];

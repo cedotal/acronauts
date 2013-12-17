@@ -17,6 +17,10 @@ function Game(io, gameId, gameConfig){
     this.ignoredCharacters = gameConfig.ignoredCharacters;
     this.optionallyIgnoredWords = gameConfig.optionallyIgnoredWords;
     this.idealStartTime = Date.now() + (gameConfig.idealGameWait * 1000);
+    setTimeout(function(){
+        console.log('running the timout game begin check');
+        self.handleGameStateUpdate();
+    }, (gameConfig.idealGameWait * 1000 + 1000));
 }
 
 Game.prototype.handleGameStateUpdate = function(){
@@ -24,6 +28,7 @@ Game.prototype.handleGameStateUpdate = function(){
     switch(this.phase){
         case 0:
             if(this.checkIfGameCanBegin() === true){
+                console.log('handleGameStateUpdate is about to call this.begin()');
                 this.begin();
             }
             break;
@@ -75,14 +80,18 @@ Game.prototype.marshalPublicObject = function(){
 
 // functions that check whether the game phase can be advanced to the next phase at any given point
 Game.prototype.checkIfGameCanBegin = function(){
+    console.log('checking if game can begin:');
     // if we have the max number of players, we're good to go!
     if (this.players.length >= this.maxPlayers){
+        console.log('true because we have maxPlayers');
         return true;
     } else if (this.players.length >= this.minPlayers && Date.now() >= this.idealStartTime) {
         // if we have at least the minimum number of players and we're past the ideal start
         // time, we can start the game
+        console.log('true because we have minPlayers and theyve been waiting long enough');
         return true;
     } else {
+        console.log('false because we dont have enough players');
         return false;
     }
 };
@@ -115,6 +124,7 @@ Game.prototype.checkIfGameCanBeRemoved = function(){
 // functions that advance the game phase. note that none of them contains validity checks; those
 // are called by game.tick() before deciding whether or not to call these
 Game.prototype.begin = function(){
+    console.log('game beginning!');
     var self = this;
     if (this.phase === 0){
         var gameConfig = this.gameConfig;
@@ -163,6 +173,9 @@ Game.prototype.addPlayer = function(player){
         player.socket.on('disconnect', function(){
             self.removePlayerById(player.socket.id);
         });
+        player.socket.on('updatePlayerStatus', function(data){
+            self.updatePlayerStatus(data);
+        });
         this.players.push(player);
     }
     self.handleGameStateUpdate();
@@ -181,6 +194,7 @@ Game.prototype.submitAnswer = function(playerId, answerText){
     if (answerValidity && this.phase === 1){
         var player = this.getPlayerById(playerId);
         player.setAnswer(answerText);
+        player.status = 2;
     }
     this.handleGameStateUpdate();
 };
@@ -241,6 +255,19 @@ Game.prototype.judgeGame = function(){
     // this needs to be a deep copy, not a pointer pass, otherwise it won't work
     this.results = this.players.map(function(player){ return player.marshalPublicObject(); });
     this.results = JSON.parse(JSON.stringify(this.results));
+};
+
+// player statuses are:
+// 0: no answer yet
+// 1: partial answer typed in
+// 2: answer submitted
+// 3: no vote yet
+// 4: vote submitted 
+Game.prototype.updatePlayerStatus = function(options){
+    console.log('options %j', options);
+    console.log('updating player %s with status %s', options.playerId, options.newStatus);
+    this.getPlayerById(options.playerId).status = options.newStatus;
+    this.handleGameStateUpdate();
 };
 
 module.exports = Game;

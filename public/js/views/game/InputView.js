@@ -17,6 +17,14 @@ define(['jquery', 'backbone', 'clockStateFromGameState', 'validateAnswer'], func
                             $(self.el).html(htmlOutput);
                             var answerPrompt = $('#answerPrompt');
                             var answerPromptInput = $('#answerPromptInput');
+                            answerPromptInput.keyup(function(event){
+                                var val = answerPromptInput.val();
+                                if (val === ''){
+                                    Backbone.trigger('updatePlayerStatus', 0);
+                                } else {
+                                    Backbone.trigger('updatePlayerStatus', 1);
+                                }
+                            });
                             answerPrompt.submit(function(event){
                                 event.preventDefault();
                                 var inputValue = answerPromptInput.val();

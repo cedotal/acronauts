@@ -16,6 +16,14 @@ define(['jquery', 'backbone'], function($, Backbone){
                         if (player.isClient === true){
                             htmlOutput += ' (YOU)';
                         }
+                        htmlOutput += ' - ';
+                        if (player.status === 1){
+                            htmlOutput +=  'typing...';
+                        } else if (player.status === 2) {
+                            htmlOutput +=  'done!';
+                        } else {
+                            htmlOutput += 'thinking...';
+                        }
                         htmlOutput += '</div>';
                     });
                     playerListElement.html(htmlOutput);
