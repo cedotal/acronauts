@@ -17,12 +17,9 @@ function Game(io, gameId, gameConfig){
     this.ignoredCharacters = gameConfig.ignoredCharacters;
     this.optionallyIgnoredWords = gameConfig.optionallyIgnoredWords;
     this.idealStartTime = Date.now() + (gameConfig.idealGameWait * 1000);
-    setInterval(function(){
-        self.tick();
-    }, 500);
 }
 
-Game.prototype.tick = function(){
+Game.prototype.handleGameStateUpdate = function(){
     var self = this;
     switch(this.phase){
         case 0:
@@ -129,6 +126,7 @@ Game.prototype.begin = function(){
         setTimeout(function(){
             self.endAnswering();
         }, answeringEndTimer);
+        self.handleGameStateUpdate();
     }
 };
 
@@ -136,6 +134,7 @@ Game.prototype.endAnswering = function(){
     if (this.phase === 1){
         this.phase = 2;
     }
+    this.handleGameStateUpdate();
 };
 
 Game.prototype.endVoting = function(){
@@ -143,6 +142,7 @@ Game.prototype.endVoting = function(){
         this.phase = 3;
         this.judgeGame();
     }
+    this.handleGameStateUpdate();
 };
 
 Game.prototype.markGameForRemoval = function(){
@@ -165,6 +165,7 @@ Game.prototype.addPlayer = function(player){
         });
         this.players.push(player);
     }
+    self.handleGameStateUpdate();
 };
 
 Game.prototype.submitAnswer = function(playerId, answerText){
@@ -181,6 +182,7 @@ Game.prototype.submitAnswer = function(playerId, answerText){
         var player = this.getPlayerById(playerId);
         player.setAnswer(answerText);
     }
+    this.handleGameStateUpdate();
 };
 
 Game.prototype.submitVote = function(voterId, voteeId){
@@ -193,6 +195,7 @@ Game.prototype.submitVote = function(voterId, voteeId){
         var votee = this.getPlayerById(voteeId);
         votee.addVote(voterId);
     }
+    this.handleGameStateUpdate();
 };
 
 Game.prototype.getPlayerById = function(id){

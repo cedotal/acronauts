@@ -8,7 +8,8 @@ function Lobby(io){
     // hacky, but it works!
     this.gameIdCounter = 0;
     this.currentGames = [];
-    // lobby needs the io object so it can pass it to the new games it creates; io is handled at the game object level
+    // lobby needs the io object so it can pass it to the new games it creates;
+    // sending gameState is handled at the game object level
     this.io = io;
     // every time a login is made, add that player to an open game
     this.io.sockets.on('connection', function(socket){
