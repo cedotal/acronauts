@@ -32,8 +32,11 @@ var generatePrompt = gameUtils.generatePrompt;
 var validateAnswer = gameUtils.validateAnswer;
 
 // set up Player class
-function Player(socket){
+function Player(socket, options){
+	console.log('Player options');
+	console.log(options);
 	this.socket = socket;
+	this.name = options.name;
 	this.voters = [];
 	this.answer = {};
 }
@@ -58,7 +61,8 @@ Player.prototype.marshalPublicObject = function(){
 	var publicObject = {};
 	var publicAttrs = [
 		'answer',
-		'voters'
+		'voters',
+		'name'
 	];
 	publicAttrs.forEach(function(attr){
 		publicObject[attr] = self[attr];
@@ -310,10 +314,14 @@ function Lobby(io){
 	this.currentGames = [];
 	// lobby needs the io object so it can pass it to the new games it creates; io is handled at the game object level
 	this.io = io;
-	// every time a connection is made, add that player to an open game
+	// every time a login is made, add that player to an open game
 	this.io.sockets.on('connection', function(socket){
-		var player = new Player(socket);
-		self.addPlayerToOpenGame(player);
+		socket.on('login', function(options){
+			console.log(options);
+			var player = new Player(socket, options);
+			self.addPlayerToOpenGame(player);
+		});
+		
 	});
 	setInterval(function(){
 		self.purgeEndedGames();

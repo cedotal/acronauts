@@ -12,7 +12,7 @@ define(['jquery', 'backbone'], function($, Backbone){
                     htmlOutput = '';
                     htmlOutput += '<div>Players</div>';
                     gameState.players.forEach(function(player){
-                        htmlOutput += '<div>' + player.id;
+                        htmlOutput += '<div>' + player.name;
                         if (player.isClient === true){
                             htmlOutput += ' (YOU)';
                         }

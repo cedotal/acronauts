@@ -23,17 +23,19 @@ requirejs.config({
 requirejs([
 	'jquery',
 	'underscore',
-	'./views/StatusView',
-	'./views/InputView',
-	'./views/PlayerListView',
-	'./views/PromptView',
-	'./views/VotingView',
-	'./views/ResultsView',
-	'./views/GameClosedView',
-	'./views/DocumentTitleView'
+	'./views/login/loginView',
+	'./views/game/StatusView',
+	'./views/game/InputView',
+	'./views/game/PlayerListView',
+	'./views/game/PromptView',
+	'./views/game/VotingView',
+	'./views/game/ResultsView',
+	'./views/game/GameClosedView',
+	'./views/game/DocumentTitleView'
 	], function(
 		$,
 		_,
+		loginView,
 		StatusView,
 		InputView,
 		PlayerListView,
@@ -45,6 +47,7 @@ requirejs([
 
 	// container for holding all of our views, so the controllers don't have to access them through window object
 	var views = {
+		loginView: loginView,
 		StatusView: StatusView,
 		InputView: InputView,
 		PlayerListView: PlayerListView,
@@ -56,6 +59,7 @@ requirejs([
 	};
 
 	function ViewController(controllerEl, viewConfig){
+		console.log('initting new ViewController with viewConfig: %j', viewConfig);
 		var self = this;
 		this.views = [];		
 		// clear el
@@ -71,12 +75,12 @@ requirejs([
 		});
 	}
 
-	ViewController.prototype.renderViews = function(gameState){
+	ViewController.prototype.renderViews = function(renderData){
 		this.views.forEach(function(view){
 			// some views (mainly inputs) need to be able to refuse auto-updates, else they'll
 			// eat user input or fail to maintain disabled state
 			if (view.autoupdate !== false){
-				view.render(gameState);
+				view.render(renderData);
 			}
 		});
 	};
@@ -84,6 +88,12 @@ requirejs([
 	function App(el, socket){
 		var self = this;
 		this.previousGameStateFromServer = { phase: undefined };
+
+		this.viewController = new ViewController(el, [
+			'loginView'
+		]);
+
+		this.viewController.renderViews();
 
 		// a function to be called when the game state changes and we have to start a completely new
 		// controller to handle a completely new set of views
@@ -150,8 +160,10 @@ requirejs([
 			self.previousGameStateFromServer = gameState;
 		});
 
-		Backbone.on('chooseName', function(payload){
-			socket.emit('chooseName', payload);
+		Backbone.on('login', function(payload){
+			console.log('login event occuring');
+			console.log(payload);
+			socket.emit('login', payload);
 		});
 
 		Backbone.on('submitAnswer', function(payload){
@@ -167,9 +179,9 @@ requirejs([
 		});
 	}
 
-	var socket = io.connect('http://localhost:3700');
+	var mySocket = io.connect('http://localhost:3700');
 	// var socket = io.connect('http://somehappenings.com:3700');
 
-	var controller = new App('#wrapper', socket);
+	var app = new App('#wrapper', mySocket);
 
 });
