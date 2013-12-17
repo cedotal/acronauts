@@ -81,13 +81,9 @@ ViewController.prototype.renderViews = function(gameState){
 	});
 };
 
-function MasterController(el, socket){
+function App(el, socket){
 	var self = this;
 	this.previousGameStateFromServer = { phase: undefined };
-
-	this.initInitialViewController = new ViewController(el, [
-
-	]);
 
 	// a function to be called when the game state changes and we have to start a completely new
 	// controller to handle a completely new set of views
@@ -151,11 +147,31 @@ function MasterController(el, socket){
 		// 3. set the new previous game state.
 		self.previousGameStateFromServer = gameState;
 	});
+
+	var messageHandler = {};
+
+	_.extend(messageHandler, Backbone.Events);
+
+	messageHandler.on('chooseName', function(payload){
+		socket.emit('chooseName', payload);
+	});
+
+	messageHandler.on('submitAnswer', function(payload){
+		socket.emit('submitAnswer', payload);
+	});
+
+	messageHandler.on('submitVote', function(payload){
+		socket.emit('submitVote', payload);
+	});
+
+	messageHandler.on('leaveGame', function(payload){
+		socket.emit('leaveGame', payload);
+	});
 }
 
 var socket = io.connect('http://localhost:3700');
 // var socket = io.connect('http://somehappenings.com:3700');
 
-var controller = new MasterController('#wrapper', socket);
+var controller = new App('#wrapper', socket);
 
 });

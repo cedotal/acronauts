@@ -33,6 +33,7 @@ define(['jquery', 'backbone', 'clockStateFromGameState', 'validateAnswer'], func
                                 return false;
                             });
                         }, timeoutValue);
+                        console.log(timeoutValue);
                         // turn off autoupdate so it doesn't eat the reponses
                         self.autoupdate = false;
                     }
