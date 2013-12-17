@@ -43,135 +43,133 @@ requirejs([
 		GameClosedView,
 		DocumentTitleView){
 
-// container for holding all of our views, so the controllers don't have to access them through window object
-var views = {
-	StatusView: StatusView,
-	InputView: InputView,
-	PlayerListView: PlayerListView,
-	PromptView: PromptView,
-	VotingView: VotingView,
-	ResultsView: ResultsView,
-	GameClosedView: GameClosedView,
-	DocumentTitleView: DocumentTitleView
-};
-
-function ViewController(controllerEl, viewConfig){
-	var self = this;
-	this.views = [];		
-	// clear el
-	$(controllerEl).empty();
-	viewConfig.forEach(function(view){
-		// maintain consistency where view class prototypes are capitalized but instances aren't
-		var viewName = view[0].toLowerCase() + view.slice(1);
-		// put the skeleton el in the view
-		$(controllerEl).append($('<div/>', {id: viewName}));
-		// instantiate each view, now that the skeleton is there
-		var viewEl = '#' + viewName;
-		self.views.push(new views[view]({ el: viewEl }));
-	});
-}
-
-ViewController.prototype.renderViews = function(gameState){
-	this.views.forEach(function(view){
-		// some views (mainly inputs) need to be able to refuse auto-updates, else they'll
-		// eat user input or fail to maintain disabled state
-		if (view.autoupdate !== false){
-			view.render(gameState);
-		}
-	});
-};
-
-function App(el, socket){
-	var self = this;
-	this.previousGameStateFromServer = { phase: undefined };
-
-	// a function to be called when the game state changes and we have to start a completely new
-	// controller to handle a completely new set of views
-	this.initNewGameViewController = function(gameState){
-		switch(gameState.phase){
-			case 0:
-				self.viewController = new ViewController(el,  [
-					'DocumentTitleView',
-					'StatusView',
-					'PromptView',
-					'InputView',
-					'PlayerListView'
-				]);
-				break;
-			case 1:
-				self.viewController = new ViewController(el,  [
-					'DocumentTitleView',
-					'StatusView',
-					'PromptView',
-					'InputView',
-					'PlayerListView'
-				]);
-				// set the timer for 1. input reveal, 2. ticker update
-				var timerId = setInterval(function(){
-					self.viewController.renderViews(self.previousGameStateFromServer);
-				}, 1000);
-				break;
-			case 2:
-				self.viewController = new ViewController(el, [
-					'DocumentTitleView',
-					'VotingView'
-					]);
-				break;
-			case 3:
-				self.viewController = new ViewController(el,  [
-					'DocumentTitleView',
-					'ResultsView'
-				]);
-				break;
-			case 4:
-				self.viewController = new ViewController(el,  [
-					'DocumentTitleView',
-					'GameClosedView'
-				]);
-				break;
-		}
+	// container for holding all of our views, so the controllers don't have to access them through window object
+	var views = {
+		StatusView: StatusView,
+		InputView: InputView,
+		PlayerListView: PlayerListView,
+		PromptView: PromptView,
+		VotingView: VotingView,
+		ResultsView: ResultsView,
+		GameClosedView: GameClosedView,
+		DocumentTitleView: DocumentTitleView
 	};
 
-	// whenever a new game state comes in, do the following
-	socket.on('gameState', function(gameState){
-		console.log('gameState recieved through socket %s: %j', socket.socket.sessionid, gameState);
-		// 1. check the previous game phase. if it does not equal the new game phase being passed in,
-		// init a new controller in place of the old one
-		if (self.previousGameStateFromServer.phase !== gameState.phase){
-			self.initNewGameViewController(gameState);
-		}
+	function ViewController(controllerEl, viewConfig){
+		var self = this;
+		this.views = [];		
+		// clear el
+		$(controllerEl).empty();
+		viewConfig.forEach(function(view){
+			// maintain consistency where view class prototypes are capitalized but instances aren't
+			var viewName = view[0].toLowerCase() + view.slice(1);
+			// put the skeleton el in the view
+			$(controllerEl).append($('<div/>', {id: viewName}));
+			// instantiate each view, now that the skeleton is there
+			var viewEl = '#' + viewName;
+			self.views.push(new views[view]({ el: viewEl }));
+		});
+	}
 
-		// 2. render all views in the current controller
-		self.viewController.renderViews(gameState);
+	ViewController.prototype.renderViews = function(gameState){
+		this.views.forEach(function(view){
+			// some views (mainly inputs) need to be able to refuse auto-updates, else they'll
+			// eat user input or fail to maintain disabled state
+			if (view.autoupdate !== false){
+				view.render(gameState);
+			}
+		});
+	};
 
-		// 3. set the new previous game state.
-		self.previousGameStateFromServer = gameState;
-	});
+	function App(el, socket){
+		var self = this;
+		this.previousGameStateFromServer = { phase: undefined };
 
-	var messageHandler = {};
+		// a function to be called when the game state changes and we have to start a completely new
+		// controller to handle a completely new set of views
+		this.initNewGameViewController = function(gameState){
+			switch(gameState.phase){
+				case 0:
+					self.viewController = new ViewController(el,  [
+						'DocumentTitleView',
+						'StatusView',
+						'PromptView',
+						'InputView',
+						'PlayerListView'
+					]);
+					break;
+				case 1:
+					self.viewController = new ViewController(el,  [
+						'DocumentTitleView',
+						'StatusView',
+						'PromptView',
+						'InputView',
+						'PlayerListView'
+					]);
+					// set the timer for 1. input reveal, 2. ticker update
+					var timerId = setInterval(function(){
+						self.viewController.renderViews(self.previousGameStateFromServer);
+					}, 1000);
+					break;
+				case 2:
+					self.viewController = new ViewController(el, [
+						'DocumentTitleView',
+						'VotingView'
+						]);
+					break;
+				case 3:
+					self.viewController = new ViewController(el,  [
+						'DocumentTitleView',
+						'ResultsView'
+					]);
+					break;
+				case 4:
+					self.viewController = new ViewController(el,  [
+						'DocumentTitleView',
+						'GameClosedView'
+					]);
+					break;
+			}
+		};
 
-	_.extend(messageHandler, Backbone.Events);
+		// whenever a new game state comes in, do the following
+		socket.on('gameState', function(gameState){
+			// modify gameState so that the (naive) views know which of the players in the gameState
+			// is the client
+			_.find(gameState.players, function(player){ return player.id === socket.socket.sessionid }).isClient = true;
+			// check the previous game phase. if it does not equal the new game phase being passed in,
+			// init a new controller in place of the old one
+			if (self.previousGameStateFromServer.phase !== gameState.phase){
+				self.initNewGameViewController(gameState);
+			}
 
-	messageHandler.on('chooseName', function(payload){
-		socket.emit('chooseName', payload);
-	});
+			// render all views in the current controller
+			self.viewController.renderViews(gameState);
 
-	messageHandler.on('submitAnswer', function(payload){
-		socket.emit('submitAnswer', payload);
-	});
+			// set the new previous game state.
+			self.previousGameStateFromServer = gameState;
+		});
 
-	messageHandler.on('submitVote', function(payload){
-		socket.emit('submitVote', payload);
-	});
+		Backbone.on('chooseName', function(payload){
+			socket.emit('chooseName', payload);
+		});
 
-	messageHandler.on('leaveGame', function(payload){
-		socket.emit('leaveGame', payload);
-	});
-}
+		Backbone.on('submitAnswer', function(payload){
+			socket.emit('submitAnswer', payload);
+		});
 
-var socket = io.connect('http://localhost:3700');
-// var socket = io.connect('http://somehappenings.com:3700');
+		Backbone.on('submitVote', function(payload){
+			socket.emit('submitVote', payload);
+		});
 
-var controller = new App('#wrapper', socket);
+		Backbone.on('leaveGame', function(payload){
+			socket.emit('leaveGame', payload);
+		});
+	}
+
+	var socket = io.connect('http://localhost:3700');
+	// var socket = io.connect('http://somehappenings.com:3700');
+
+	var controller = new App('#wrapper', socket);
 
 });

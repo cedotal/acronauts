@@ -13,14 +13,9 @@ define(['jquery', 'backbone'], function($, Backbone){
                     htmlOutput += '<div>Players</div>';
                     gameState.players.forEach(function(player){
                         htmlOutput += '<div>' + player.id;
-                        // TODO: fix this so that the controller alters the gamestate to
-                        // mark the current player so that this works properly, since
-                        // views no longer know about sockets
-                        /*
-                        if (player.id === socket.socket.sessionid){
+                        if (player.isClient === true){
                             htmlOutput += ' (YOU)';
                         }
-                        */
                         htmlOutput += '</div>';
                     });
                     playerListElement.html(htmlOutput);

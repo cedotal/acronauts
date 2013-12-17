@@ -9,12 +9,12 @@ define(['jquery', 'backbone', 'clockStateFromGameState', 'validateAnswer'], func
                     $(self).html(htmlOutput);
                     break;
                 case 1:
-                var clockState = clockStateFromGameState(gameState);
-                    if (clockState === 1){
+                    var clockState = clockStateFromGameState(gameState);
+                    if (clockState === 0){
                         var timeoutValue = gameState.clockStart - new Date().getTime();
                         setTimeout(function(){
                             htmlOutput += '<div>Type in your backronym:<form id="answerPrompt"><input id="answerPromptInput" type="text"></input><input type="submit"></input></form></div>';
-                            $(self).html(htmlOutput);
+                            $(self.el).html(htmlOutput);
                             var answerPrompt = $('#answerPrompt');
                             var answerPromptInput = $('#answerPromptInput');
                             answerPrompt.submit(function(){
@@ -23,7 +23,7 @@ define(['jquery', 'backbone', 'clockStateFromGameState', 'validateAnswer'], func
                                     ignoredCharacters: ['\'', '\"'],
                                     optionallyIgnoredWords: ['the', 'a', 'an']
                                 }) === true){
-                                    self.trigger('submitAnswer', {
+                                    Backbone.trigger('submitAnswer', {
                                         answerText: inputValue
                                     });
                                     $('input').attr('disabled', true);
@@ -33,7 +33,6 @@ define(['jquery', 'backbone', 'clockStateFromGameState', 'validateAnswer'], func
                                 return false;
                             });
                         }, timeoutValue);
-                        console.log(timeoutValue);
                         // turn off autoupdate so it doesn't eat the reponses
                         self.autoupdate = false;
                     }

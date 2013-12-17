@@ -164,6 +164,7 @@ Game.prototype.checkIfAnsweringIsComplete = function(){
 	return totalAnswers >= this.players.length || Date.now() >= this.clockEnd;
 };
 
+// TODO: if a player leaves before voting, voting could end before everyone left has voted
 Game.prototype.checkIfVotingIsComplete = function(){
 	var totalVotes = 0;
 	this.players.forEach(function(player){
@@ -213,7 +214,6 @@ Game.prototype.markGameForRemoval = function(){
 };
 
 Game.prototype.addPlayer = function(player){
-	console.log('adding player %s to game %s', player.socket.id, this.id);
 	var self = this;
 	if (this.phase === 0){
 		player.socket.on('submitAnswer', function(data){
@@ -342,7 +342,6 @@ Lobby.prototype.addPlayerToOpenGame = function(player){
 		if (currentGame.phase === 0 && currentGame.players.length < gameConfig.maxPlayers){
 			currentGame.addPlayer(player);
 			playerAssigned = true;
-			console.log('adding player to previously-existing game with id %s', currentGame.id);
 			return self.currentGames[i];
 		}
 	}
@@ -351,7 +350,6 @@ Lobby.prototype.addPlayerToOpenGame = function(player){
 	this.gameIdCounter++;
 	newGame.addPlayer(player);
 	this.addGame(newGame);
-	console.log('adding player to new game with id %s', newGame.id);
 	return this.currentGames[this.currentGames.length - 1];
 };
 
