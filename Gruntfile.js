@@ -42,7 +42,7 @@ module.exports = function(grunt) {
                 }
             },
             server: {
-                src: './server/**',
+                src: ['./server/*.js', './server/*.json', './server/models/*.js'],
                 options: {
                     devel: true,
                     node: true

@@ -1,0 +1,10 @@
+{
+    "promptLength": 5,
+    "clockLength": 60,
+    "gameStartDelay": 15,
+    "idealGameWait": 5, 
+    "maxPlayers": 8,
+    "minPlayers": 3,
+    "ignoredCharacters": ["'", "\""],
+    "optionallyIgnoredWords": ["a", "an", "the"]
+}

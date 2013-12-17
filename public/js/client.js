@@ -59,7 +59,6 @@ requirejs([
 	};
 
 	function ViewController(controllerEl, viewConfig){
-		console.log('initting new ViewController with viewConfig: %j', viewConfig);
 		var self = this;
 		this.views = [];		
 		// clear el
@@ -164,8 +163,6 @@ requirejs([
 		});
 
 		Backbone.on('login', function(payload){
-			console.log('login event occuring');
-			console.log(payload);
 			socket.emit('login', payload);
 		});
 

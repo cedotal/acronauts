@@ -17,7 +17,8 @@ define(['jquery', 'backbone', 'clockStateFromGameState', 'validateAnswer'], func
                             $(self.el).html(htmlOutput);
                             var answerPrompt = $('#answerPrompt');
                             var answerPromptInput = $('#answerPromptInput');
-                            answerPrompt.submit(function(){
+                            answerPrompt.submit(function(event){
+                                event.preventDefault();
                                 var inputValue = answerPromptInput.val();
                                 if (validateAnswer(inputValue, gameState.prompt, {
                                     ignoredCharacters: ['\'', '\"'],
@@ -30,7 +31,6 @@ define(['jquery', 'backbone', 'clockStateFromGameState', 'validateAnswer'], func
                                 } else {
                                     alert('That answer doesn\'t match the acronym given - try again!');
                                 }
-                                return false;
                             });
                         }, timeoutValue);
                         // turn off autoupdate so it doesn't eat the reponses
