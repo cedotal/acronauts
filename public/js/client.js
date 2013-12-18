@@ -24,6 +24,7 @@ requirejs([
 	'jquery',
 	'underscore',
 	'./views/login/loginView',
+	'./views/loading/loadingView',
 	'./views/game/StatusView',
 	'./views/game/InputView',
 	'./views/game/PlayerListView',
@@ -36,6 +37,7 @@ requirejs([
 		$,
 		_,
 		loginView,
+		loadingView,
 		StatusView,
 		InputView,
 		PlayerListView,
@@ -48,6 +50,7 @@ requirejs([
 	// container for holding all of our views, so the controllers don't have to access them through window object
 	var views = {
 		loginView: loginView,
+		loadingView: loadingView,
 		StatusView: StatusView,
 		InputView: InputView,
 		PlayerListView: PlayerListView,
@@ -176,8 +179,13 @@ requirejs([
 			socket.emit('submitVote', payload);
 		});
 
-		Backbone.on('leaveGame', function(payload){
-			socket.emit('leaveGame', payload);
+		Backbone.on('leaveGame', function(){
+			console.log('App is processing leaveGame function');
+			socket.emit('leaveGame');
+			this.viewController = new ViewController(el, [
+				'loadingView'
+			]);
+			this.viewController.renderViews();
 		});
 
 		Backbone.on('updatePlayerStatus', function(payload){

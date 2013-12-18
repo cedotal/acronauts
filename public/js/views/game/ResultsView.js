@@ -13,7 +13,11 @@ define(['jquery', 'backbone'], function($, Backbone){
                 }
                 content += '</div>';
             });
+            content += '<div><button>Play a new game</button></div>';
             $(self.el).html(content);
+            $(self.el).find('button').click(function(event){
+                Backbone.trigger('leaveGame');
+            });
         }
     });
 });
