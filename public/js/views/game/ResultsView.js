@@ -3,8 +3,15 @@ define(['jquery', 'backbone'], function($, Backbone){
         render: function(gameState){
             var self = this;
             var content = '';
+            var winnerSet = false;
             gameState.results.forEach(function(player){
-                content += ('<div>' + player.name + ': "' + player.answer.text + '" - ' + player.voters.length + '</div>');
+                content += ('<div>');
+                content += (player.name + ': "' + player.answer.text + '" - ' + player.voters.length);
+                if (winnerSet === false) {
+                    content += ' (WINNER)';
+                    winnerSet = true;
+                }
+                content += '</div>';
             });
             $(self.el).html(content);
         }
