@@ -144,6 +144,9 @@ Game.prototype.endAnswering = function(){
     if (this.phase === 1){
         this.phase = 2;
     }
+    this.players.forEach(function(player){
+        player.status = 3;
+    });
     this.handleGameStateUpdate();
 };
 
@@ -207,7 +210,9 @@ Game.prototype.submitVote = function(voterId, voteeId){
     // TODO: prevent multiple voting by checking for voteeId
     if (voterId !== voteeId && this.phase === 2){
         var votee = this.getPlayerById(voteeId);
+        var voter = this.getPlayerById(voterId);
         votee.addVote(voterId);
+        voter.status = 4;
     }
     this.handleGameStateUpdate();
 };

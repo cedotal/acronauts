@@ -123,8 +123,9 @@ requirejs([
 				case 2:
 					self.viewController = new ViewController(el, [
 						'DocumentTitleView',
-						'VotingView'
-						]);
+						'VotingView',
+						'PlayerListView'
+					]);
 					break;
 				case 3:
 					self.viewController = new ViewController(el,  [
