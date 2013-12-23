@@ -3,6 +3,7 @@ requirejs.config({
 		jquery: './lib/jquery-2.0.3',
 		underscore: './lib/underscore',
 		backbone: './lib/backbone',
+		config: './config',
 		validateAnswer: './utils/validateAnswer',
 		clockStateFromGameState: './utils/clockStateFromGameState'
 	},
@@ -23,6 +24,7 @@ requirejs.config({
 requirejs([
 	'jquery',
 	'underscore',
+	'config',
 	'./views/login/loginView',
 	'./views/loading/loadingView',
 	'./views/game/StatusView',
@@ -36,6 +38,7 @@ requirejs([
 	], function(
 		$,
 		_,
+		config,
 		loginView,
 		loadingView,
 		StatusView,
@@ -198,8 +201,9 @@ requirejs([
 		});
 	}
 
-	var mySocket = io.connect('http://localhost:3700');
-	// var socket = io.connect('http://somehappenings.com:3700');
+	// TODO: make this dynamic based on env config
+	var host = 'http://' + config.hostname + ':' + config.port;
+	var mySocket = io.connect(host);
 
 	var app = new App('#wrapper', mySocket);
 

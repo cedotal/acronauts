@@ -1,7 +1,5 @@
 // set up express
 
-console.log(process.env.NODE_ENV);
-
 var express = require('express');
 var app = express();
 
@@ -13,12 +11,22 @@ app.get('/', function(req, res){
 	res.render('page');
 });
 
-// special rule so that we can have the client recieve different config files
-// based on the environment
-// TODO: make this actually send dynamic data
+// middleware so that we can have the client recieve different config files based on the environment
 app.use(function(req, res, next){
     if (req.url === '/js/config.js'){
-        var response = 'define([], function(){ return { "host": "testhost" }});';
+        var hostname;
+        if (process.env.NODE_ENV === 'production'){
+            hostname = 'playacronauts.com';
+        } else {
+            hostname = 'localhost';
+        }
+        var port = 3700;
+        var response = 'define([], function(){ return { "hostname": "';
+        response += hostname;
+        response += '", "port": ';
+        response += port;
+        response += '}});';
+        res.set('Content-Type', 'application/json');
         res.send(response);
     } else {
         next();
