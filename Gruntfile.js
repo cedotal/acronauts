@@ -20,6 +20,15 @@ module.exports = function(grunt) {
                     file: './server/server.js',
                     watchedExtensions: ['js', 'json', 'css', 'jade', ''],
                     nodeArgs: ['--debug']                }
+            },
+            prod: {
+                options: {
+                    env: {
+                        NODE_ENV: 'production'
+                    },
+                    file: './server/server.js',
+                    watchedExtensions: ['js', 'json', 'css', 'jade', '']
+                }
             }
         },
         foreverMulti: {
@@ -94,7 +103,7 @@ module.exports = function(grunt) {
 
     // Default task.
     grunt.registerTask('monitor', ['concurrent:dev']);
-    grunt.registerTask('dev', ['nodemon']);
-    grunt.registerTask('prod', ['foreverMulti:production']);
+    grunt.registerTask('dev', ['nodemon:dev']);
+    grunt.registerTask('prod', ['nodemon:prod']);
     grunt.registerTask('test', ['mochaTest']);
 };

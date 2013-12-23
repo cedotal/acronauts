@@ -16,7 +16,7 @@ app.use(function(req, res, next){
     if (req.url === '/js/config.js'){
         var hostname;
         if (process.env.NODE_ENV === 'production'){
-            hostname = 'playacronauts.com';
+            hostname = 'somehappenings.com';
         } else {
             hostname = 'localhost';
         }
