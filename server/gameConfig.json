@@ -2,7 +2,7 @@
     "promptLength": 5,
     "clockLength": 60,
     "gameStartDelay": 5,
-    "idealGameWait": 5, 
+    "idealGameWait": 15, 
     "maxPlayers": 8,
     "minPlayers": 3,
     "ignoredCharacters": ["'", "\""],
