@@ -3,7 +3,7 @@ var Game = require('./Game');
 var gameConfig = require('../gameConfig');
 
 // set up Lobby class
-function Lobby(io){
+var Lobby = function(io){
     var self = this;
     // hacky, but it works!
     this.gameIdCounter = 0;
@@ -21,39 +21,41 @@ function Lobby(io){
     setInterval(function(){
         self.purgeEndedGames();
     }, 5000);
-}
 
-Lobby.prototype.addGame = function(game){
-    this.currentGames.push(game);
-};
+    this.addGame = function(game){
+        self.currentGames.push(game);
+    };
 
-Lobby.prototype.purgeEndedGames = function(){
-    this.currentGames = this.currentGames.filter(function(currentGame){
-        if (currentGame.phase === 4 && currentGame.players.length === 0){
-            return false;
-        } else {
-            return true;
+    this.purgeEndedGames = function(){
+        self.currentGames = self.currentGames.filter(function(currentGame){
+            if (currentGame.phase === 4 && currentGame.players.length === 0){
+                return false;
+            } else {
+                return true;
+            }
+        });
+    };
+
+    this.addPlayerToOpenGame = function(player){
+        var playerAssigned = false;
+        for (var i = 0; i < self.currentGames.length ; i++){
+            var currentGame = self.currentGames[i];
+            if (currentGame.phase === 0 && currentGame.players.length < gameConfig.maxPlayers){
+                currentGame.addPlayer(player);
+                playerAssigned = true;
+                return self.currentGames[i];
+            }
         }
-    });
-};
+        // if we made it this far, the player was not assigned to any open games, so we have to create a new one
+        var newGame = new Game(self.io, self.gameIdCounter, gameConfig);
+        self.gameIdCounter++;
+        newGame.addPlayer(player);
+        self.addGame(newGame);
+        return self.currentGames[self.currentGames.length - 1];
+    };
 
-Lobby.prototype.addPlayerToOpenGame = function(player){
-    var self = this;
-    var playerAssigned = false;
-    for (var i = 0; i < self.currentGames.length ; i++){
-        var currentGame = self.currentGames[i];
-        if (currentGame.phase === 0 && currentGame.players.length < gameConfig.maxPlayers){
-            currentGame.addPlayer(player);
-            playerAssigned = true;
-            return self.currentGames[i];
-        }
-    }
-    // if we made it this far, the player was not assigned to any open games, so we have to create a new one
-    var newGame = new Game(this.io, this.gameIdCounter, gameConfig);
-    this.gameIdCounter++;
-    newGame.addPlayer(player);
-    this.addGame(newGame);
-    return this.currentGames[this.currentGames.length - 1];
+    // Lobby has no public API!
+    return {};
 };
 
 module.exports = Lobby;
