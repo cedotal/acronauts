@@ -3,8 +3,8 @@ define(['jquery', 'backbone'], function($, Backbone){
         render: function(gameState){
             var self = this;
             gameState.players.forEach(function(player){
-                if (player.isClient !== true && player.answer.text !== undefined) {
-                    $(self.el).append('<div>' + player.answer.text + '<button id="' + player.id + '">Vote</button></div>');
+                if (player.isClient !== true && player.answer !== undefined) {
+                    $(self.el).append('<div>' + player.answer + '<button id="' + player.id + '">Vote</button></div>');
                     $('#' + player.id).click(function(){
                         Backbone.trigger('submitVote', {
                             voteeId: player.id
