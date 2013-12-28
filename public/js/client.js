@@ -171,7 +171,12 @@ requirejs([
 		});
 
 		Backbone.on('login', function(payload){
+			this.viewController = new ViewController(el, [
+				'loadingView'
+			]);
+			this.viewController.renderViews();
 			socket.emit('login', payload);
+
 		});
 
 		Backbone.on('submitAnswer', function(payload){
@@ -183,7 +188,6 @@ requirejs([
 		});
 
 		Backbone.on('leaveGame', function(){
-			console.log('App is processing leaveGame function');
 			socket.emit('leaveGame');
 			this.viewController = new ViewController(el, [
 				'loadingView'
@@ -192,12 +196,7 @@ requirejs([
 		});
 
 		Backbone.on('updatePlayerStatus', function(payload){
-			var serverPayload = {
-				playerId: socket.socket.sessionid,
-				newStatus: payload
-			};
-			console.log('emitting updatePlayerStatus with payload: %j', serverPayload);
-			socket.emit('updatePlayerStatus', serverPayload);
+			socket.emit('updatePlayerStatus', payload);
 		});
 	}
 

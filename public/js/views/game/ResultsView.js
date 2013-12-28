@@ -6,7 +6,7 @@ define(['jquery', 'backbone'], function($, Backbone){
             var winnerSet = false;
             gameState.results.forEach(function(player){
                 content += ('<div>');
-                content += (player.name + ': "' + player.answer.text + '" - ' + player.voters.length);
+                content += (player.name + ': "' + player.answer + '" - ' + player.voters.length);
                 if (winnerSet === false) {
                     content += ' (WINNER)';
                     winnerSet = true;
