@@ -7,7 +7,8 @@ var Lobby = function(io){
     var self = this;
     // hacky, but it works!
     this.gameIdCounter = 0;
-    this.currentGames = [];
+    this.players = [];
+    this.games = [];
     // lobby needs the io object so it can pass it to the new games it creates;
     // sending gameState is handled at the game object level
     this.io = io;
@@ -15,20 +16,49 @@ var Lobby = function(io){
     this.io.sockets.on('connection', function(socket){
         socket.on('login', function(options){
             var player = new Player(socket, options);
-            self.addPlayerToOpenGame(player);
+            self.addPlayer(player);
+            socket.on('leaveGame', function(){
+                // when a player voluntarily leaves a game, put then back in the lobby
+                var game = self.getGameByContainedPlayerId(player.socket.id);
+                var playerPointer = game.getPlayerById(player.socket.id);
+                // it's possible for another async function to have removed the player in the
+                // middle of this function
+                if (playerPointer !== undefined){
+                    game.flushListenersByPlayerId(player.socket.id);
+                    game.removePlayerById(player.socket.id);
+                    playerPointer.flushGameData();
+                    self.addPlayer(playerPointer);
+                    self.autoAssignPlayersToGames();
+                }
+            });
+            socket.on('disconnect', function(){
+                var game = self.getGameByContainedPlayerId(player.socket.id);
+                // if a player disconnects, they need to be purged from their current game or the lobby,
+                // if they're in the lobby
+                game.removePlayerById(player.socket.id);
+                self.removePlayerById(player.socket.id);
+            });
         });     
     });
+    // TODO: setinterval seems like a crappy way to handle this; do something event-based or using
+    // timeout instead
     setInterval(function(){
+        self.autoAssignPlayersToGames();
         self.purgeEndedGames();
-    }, 5000);
+    }, 1000);
 
     this.addGame = function(game){
-        self.currentGames.push(game);
+        self.games.push(game);
+    };
+
+    this.addPlayer = function(player){
+        self.players.push(player);
+        player.updateLastMovedTimestamp();
     };
 
     this.purgeEndedGames = function(){
-        self.currentGames = self.currentGames.filter(function(currentGame){
-            if (currentGame.phase === 4 && currentGame.players.length === 0){
+        self.games = self.games.filter(function(game){
+            if (game.phase === 4 && game.players.length === 0){
                 return false;
             } else {
                 return true;
@@ -36,25 +66,72 @@ var Lobby = function(io){
         });
     };
 
-    this.addPlayerToOpenGame = function(player){
-        var playerAssigned = false;
-        for (var i = 0; i < self.currentGames.length ; i++){
-            var currentGame = self.currentGames[i];
-            if (currentGame.phase === 0 && currentGame.players.length < gameConfig.maxPlayers){
-                currentGame.addPlayer(player);
-                playerAssigned = true;
-                return self.currentGames[i];
-            }
+    this.removePlayerById = function(id){
+        var indexOfPlayerToRemove;
+        for (var i = 0; i < self.players.length; i++){
+            if (self.players[i].socket.id === id) { indexOfPlayerToRemove = i; }
         }
-        // if we made it this far, the player was not assigned to any open games, so we have to create a new one
-        var newGame = new Game(self.io, self.gameIdCounter, gameConfig);
-        self.gameIdCounter++;
-        newGame.addPlayer(player);
-        self.addGame(newGame);
-        return self.currentGames[self.currentGames.length - 1];
+        if (indexOfPlayerToRemove !== undefined) {
+           self.players.splice(indexOfPlayerToRemove, 1);
+        }
     };
 
-    // Lobby has no public API!
+    this.getGameByContainedPlayerId = function(id){
+        var gameIndex;
+        for (var i = 0; i < self.games.length; i++){
+            if (self.games[i].getPlayerById !== undefined) {
+                gameIndex = i;
+            }
+        }
+        return self.games[gameIndex];
+    };
+
+    this.autoAssignPlayersToGames = function(){
+        var players = self.players;
+        var minPlayers = gameConfig.minPlayers;
+        var maxPlayers = gameConfig.maxPlayers;
+        var idealGameWait = gameConfig.idealGameWait;
+        // first, sort players so the ones the array goes in the order of how long that
+        // player has been waiting
+        self.players.sort(function(a, b){
+            if (a.getLastMovedTimestamp() > b.getLastMovedTimestamp()){
+                return 1;
+            } else if (a.getLastMovedTimestamp() < b.getLastMovedTimestamp()) {
+                return -1;
+            } else {
+                return 0;
+            }
+        });
+        var newGame;
+        // assign players in chunks of maxPlayers, if possible
+        while (players.length >= maxPlayers){
+            newGame = new Game(self.io, self.gameIdCounter, gameConfig);
+            self.gameIdCounter++;
+            self.addGame(newGame);
+            for (var i=0; i < maxPlayers; i++){
+                // move player from lobby to game
+                newGame.addPlayer(players[0]);
+                self.players.splice(0, 1);
+            }
+            newGame.allowGameToBegin();
+        }
+        // now, check to see if any players have been waiting for too long and can be assigned
+        // to a game with at least maxPlayers
+        var longestPlayerWaitLength = (self.players.length !== 0) ? (Date.now() - self.players[0].getLastMovedTimestamp()) : 0;
+        if (longestPlayerWaitLength > (idealGameWait * 1000) && players.length >= minPlayers){
+            newGame = new Game(self.io, self.gameIdCounter, gameConfig);
+            self.gameIdCounter++;
+            self.addGame(newGame);
+            while(players.length > 0){
+                // move player from lobby to game
+                newGame.addPlayer(players[0]);
+                self.players.splice(0, 1);
+            }
+            newGame.allowGameToBegin();
+        }
+    };
+
+    // Lobby has no public API
     return {};
 };
 

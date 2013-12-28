@@ -11,15 +11,18 @@ function Game(io, gameId, gameConfig){
     this.gameConfig = gameConfig;
     this.players = [];
     this.phase = 0;
+    // TODO: why on earth all these all set as separate attrs when they're all in the config attr
     this.promptLength = gameConfig.promptLength;
     this.minPlayers = gameConfig.minPlayers;
     this.maxPlayers = gameConfig.maxPlayers;
     this.ignoredCharacters = gameConfig.ignoredCharacters;
     this.optionallyIgnoredWords = gameConfig.optionallyIgnoredWords;
     this.idealStartTime = Date.now() + (gameConfig.idealGameWait * 1000);
-    setTimeout(function(){
-        self.handleGameStateUpdate();
-    }, (gameConfig.idealGameWait * 1000 + 1000));
+    this.gameCanBegin = false;
+
+    // an object where keys are player ids and attrs are objects of the functions a game sets when
+    // a player joins
+    this.eventFunctions = {};
 
     this.handleGameStateUpdate = function(){
         switch(self.phase){
@@ -49,6 +52,12 @@ function Game(io, gameId, gameConfig){
         });
     };
 
+    // expose this function so the lobby can tell it 'i'm done adding players to you, you can start'
+    this.allowGameToBegin = function(){
+        self.gameCanBegin = true;
+        self.handleGameStateUpdate();
+    };
+
     // create a public version of the game object to send out to the clients. socket.io will automatically
     // strip all attrs that contain functions, but some attrs are not supposed to be public and some will,
     // when serialized, generate circular reference errors
@@ -75,31 +84,17 @@ function Game(io, gameId, gameConfig){
 
     // functions that check whether the game phase can be advanced to the next phase at any given point
     this.checkIfGameCanBegin = function(){
-        // if we have the max number of players, we're good to go!
-        if (self.players.length >= self.maxPlayers){
-            return true;
-        } else if (self.players.length >= self.minPlayers && Date.now() >= self.idealStartTime) {
-            // if we have at least the minimum number of players and we're past the ideal start
-            // time, we can start the game
-            return true;
-        } else {
-            return false;
-        }
+        return self.gameCanBegin;
     };
 
     this.checkIfAnsweringIsComplete = function(){
-        console.log('checking if answering is complete');
         var totalAnswers = 0;
-        console.log('self.players');
-        console.log(self.players);
         self.players.forEach(function(player){
             var answer = player.getAnswer();
             if (answer.text !== undefined && answer.text !== ''){
                 totalAnswers += 1;
             }
         });
-        console.log('totalAnswers');
-        console.log(totalAnswers);
         // answering is complete if either everyone has answered, or we're past the end of the clock
         return totalAnswers >= self.players.length || Date.now() >= self.clockEnd;
     };
@@ -161,24 +156,31 @@ function Game(io, gameId, gameConfig){
 
     this.addPlayer = function(player){
         if (self.phase === 0){
-            player.socket.on('submitAnswer', function(data){
-                self.submitAnswer(player.socket.id, data.answerText);
-            });
-            player.socket.on('submitVote', function(data){
-                self.submitVote(player.socket.id, data.voteeId);
-            });
-            player.socket.on('disconnect', function(){
-                self.removePlayerById(player.socket.id);
-            });
-            player.socket.on('updatePlayerStatus', function(data){
-                self.updatePlayerStatus(data);
-            });
-            player.socket.on('leaveGame', function(){
-                self.removePlayerById(player.socket.id);
-            });
+            self.eventFunctions[player.socket.id] = {
+                submitAnswer: function(data){
+                    self.submitAnswer(player.socket.id, data.answerText);
+                },
+                submitVote: function(data){
+                    self.submitVote(player.socket.id, data.voteeId);
+                },
+                updatePlayerStatus: function(data){
+                    self.updatePlayerStatus(player.socket.id, data);
+                }
+            };
+            player.socket.on('submitAnswer', self.eventFunctions[player.socket.id].submitAnswer);
+            player.socket.on('submitVote', self.eventFunctions[player.socket.id].submitVote);
+            player.socket.on('updatePlayerStatus', self.eventFunctions[player.socket.id].updatePlayerStatus);
+            
             self.players.push(player);
         }
-        self.handleGameStateUpdate();
+    };
+
+    // remove the socket events that were set when this game was added to the game
+    this.flushListenersByPlayerId = function(playerId){
+        var player = self.getPlayerById(playerId);
+        for (var attr in self.eventFunctions[playerId]){
+            player.socket.removeListener(attr, self.eventFunctions[playerId][attr]);
+        }
     };
 
     this.submitAnswer = function(playerId, answerText){
@@ -194,7 +196,7 @@ function Game(io, gameId, gameConfig){
         if (answerValidity && self.phase === 1){
             var player = self.getPlayerById(playerId);
             player.setAnswer(answerText);
-            player.setStatus (2);
+            player.setStatus(2);
         }
         self.handleGameStateUpdate();
     };
@@ -215,6 +217,9 @@ function Game(io, gameId, gameConfig){
     };
 
     this.getPlayerById = function(id){
+        console.log('running getPlayerById for id %s', id);
+        console.log('self.players:');
+        console.log(self.players.map(function(player){ return player.socket.id; }));
         var matchedPlayer = self.players.filter(function(player){
             if (player.socket.id === id) {
                 return true;
@@ -230,10 +235,12 @@ function Game(io, gameId, gameConfig){
         for (var i = 0; i < self.players.length; i++){
             if (self.players[i].socket.id === id) { indexOfPlayerToRemove = i; }
         }
-        self.players.splice(indexOfPlayerToRemove, 1);
-        // player departure requires a new check for whether the game is viable or not
-        if (self.checkIfGameCanBeRemoved()){
-            self.markGameForRemoval();
+        if (indexOfPlayerToRemove !== undefined) {
+            self.players.splice(indexOfPlayerToRemove, 1);
+            // player departure requires a new check for whether the game is viable or not
+            if (self.checkIfGameCanBeRemoved()){
+                self.markGameForRemoval();
+            }
         }
     };
 
@@ -264,10 +271,12 @@ function Game(io, gameId, gameConfig){
     // 2: answer submitted
     // 3: no vote yet
     // 4: vote submitted 
-    this.updatePlayerStatus = function(options){
-        self.getPlayerById(options.playerId).setStatus(options.newStatus);
+    this.updatePlayerStatus = function(playerId, newStatus){
+        self.getPlayerById(playerId).setStatus(newStatus);
         self.handleGameStateUpdate();
     };
 }
+
+// TODO: change this to only export the attrs that are necessary to have a public api
 
 module.exports = Game;

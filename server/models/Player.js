@@ -4,7 +4,6 @@ function Player(socket, options){
     this.voters = [];
     this.answer = {};
     this.status = 0;
-
     var self = this;
 
     // update player's current status: 'thinking', 'typing', etc.
@@ -57,7 +56,23 @@ function Player(socket, options){
         return self.voters.length;
     };
 
+    this.getLastMovedTimestamp = function(){
+        return self.lastMovedTimestamp;
+    };
 
+    this.updateLastMovedTimestamp = function(){
+        self.lastMovedTimestamp = Date.now();
+    };
+
+    this.flushGameData = function(){
+        self.answer = {};
+        self.voters = [];
+        self.status = 0;
+    };
+
+    // moving the player out of nonexistence and into a room counts as a move
+    this.updateLastMovedTimestamp();
+    
     // return public functions
     return {
         socket: this.socket,
@@ -68,7 +83,10 @@ function Player(socket, options){
         getAnswer: this.getAnswer,
         getStatus: this.getStatus,
         setStatus: this.setStatus,
-        getNumberOfVotes: this.getNumberOfVotes
+        getNumberOfVotes: this.getNumberOfVotes,
+        updateLastMovedTimestamp: this.updateLastMovedTimestamp,
+        getLastMovedTimestamp: this.getLastMovedTimestamp,
+        flushGameData: this.flushGameData
     };       
 }
 

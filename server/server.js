@@ -41,6 +41,6 @@ var Lobby = require('./models/Lobby');
 // set up socket.io listener and events
 var port = 3700;
 
-var io = require('socket.io').listen(app.listen(port), { log: true });
+var io = require('socket.io').listen(app.listen(port), { log: false });
 
 var lobby = new Lobby(io);
